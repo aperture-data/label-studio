@@ -46,7 +46,9 @@ from django.utils.crypto import get_random_string
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.inspectors import CoreAPICompatInspector, NotHandled
-from label_studio_tools.core.utils.exceptions import LabelStudioXMLSyntaxErrorSentryIgnored
+from label_studio_sdk._extensions.label_studio_tools.core.utils.exceptions import (
+    LabelStudioXMLSyntaxErrorSentryIgnored,
+)
 from pkg_resources import parse_version
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
@@ -213,10 +215,9 @@ def find_editor_files():
     editor_dir = settings.EDITOR_ROOT
 
     # find editor files to include in html
-    editor_js_dir = os.path.join(editor_dir, 'js')
-    editor_js = [prefix + 'js/' + f for f in os.listdir(editor_js_dir) if f.endswith('.js')]
-    editor_css_dir = os.path.join(editor_dir, 'css')
-    editor_css = [prefix + 'css/' + f for f in os.listdir(editor_css_dir) if f.endswith('.css')]
+    editor_js = [prefix + f for f in os.listdir(editor_dir) if f.endswith('.js')]
+    editor_css = [prefix + f for f in os.listdir(editor_dir) if f.endswith('.css')]
+
     return {'editor_js': editor_js, 'editor_css': editor_css}
 
 
@@ -477,11 +478,11 @@ def collect_versions(force=False):
     except:  # noqa: E722
         pass
 
-    # converter
+    # converter from label-studio-sdk
     try:
-        import label_studio_converter
+        import label_studio_sdk.converter
 
-        result['label-studio-converter'] = {'version': label_studio_converter.__version__}
+        result['label-studio-converter'] = {'version': label_studio_sdk.__version__}
     except Exception:
         pass
 
@@ -547,8 +548,8 @@ def import_from_string(func_string):
     """
     try:
         return import_string(func_string)
-    except ImportError:
-        msg = f'Could not import {func_string} from settings'
+    except ImportError as e:
+        msg = f'Could not import {func_string} from settings: {e}'
         raise ImportError(msg)
 
 
