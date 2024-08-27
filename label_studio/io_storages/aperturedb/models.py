@@ -26,15 +26,22 @@ import traceback
 logger = logging.getLogger(__name__)
 
 UID_REGEX = re.compile(r"^\d+\.\d+\.\d+$")
+DEFAULT_LIMIT = 1000
 
 
 class ApertureDBStorageMixin(models.Model):
-    hostname = models.TextField(_("hostname"), null=True, blank=True, help_text="ApertureDB host name")
-    port = models.PositiveIntegerField(_("port"), null=True, blank=True, help_text="ApertureDB host port")
-    username = models.TextField(_("username"), null=True, blank=True, help_text="ApertureDB user name")
-    password = models.TextField(_("password"), null=True, blank=True, help_text="ApertureDB user password")
-    token = models.TextField(_("token"), null=True, blank=True, help_text="ApertureDB user token")
-    use_ssl = models.BooleanField(_("use_ssl"), default=True, help_text="Use SSL when communicating with ApertureDB")
+    hostname = models.TextField(
+        _("hostname"), null=True, blank=True, help_text="ApertureDB host name")
+    port = models.PositiveIntegerField(
+        _("port"), null=True, blank=True, help_text="ApertureDB host port")
+    username = models.TextField(
+        _("username"), null=True, blank=True, help_text="ApertureDB user name")
+    password = models.TextField(
+        _("password"), null=True, blank=True, help_text="ApertureDB user password")
+    token = models.TextField(_("token"), null=True,
+                             blank=True, help_text="ApertureDB user token")
+    use_ssl = models.BooleanField(
+        _("use_ssl"), default=True, help_text="Use SSL when communicating with ApertureDB")
     _db_lock = threading.Lock()
     _db = None
 
@@ -67,7 +74,8 @@ class ApertureDBStorageMixin(models.Model):
         db = self.get_connection()
         res, _ = db.query([{"GetStatus": {}}])
         if self._response_status(res) != 0:
-            raise ValueError(f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
+            raise ValueError(
+                f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
 
     class Meta:
         abstract = True
@@ -94,7 +102,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         help_text="ApertureDB constraints on bounding box predictions (see https://docs.aperturedata.io/query_language/Reference/shared_command_parameters/constraints)",
     )
 
-    limit = models.PositiveIntegerField(_("limit"), null=True, blank=True, help_text="Maximum number of tasks")
+    limit = models.PositiveIntegerField(
+        _("limit"), null=True, blank=True, help_text="Maximum number of tasks", default=DEFAULT_LIMIT)
 
     as_format_jpg = models.BooleanField(
         _("as_format_jpg"),
@@ -108,15 +117,17 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         batch = 100
 
         offset = 0
-        constraints = json.loads(str(self.constraints)) if self.constraints else {}
         find_images = {
             "uniqueids": True,
             "blobs": False,
             "limit": batch,
-            "constraints": constraints | {"width": [">", 0], "height": [">", 0]},
+            "constraints": {"width": [">", 0], "height": [">", 0]}
         }
+
+        # Concatenate user constraints with our internal width/height requirement
         if self.constraints:
-            find_images["constraints"] = json.loads(str(self.constraints))
+            find_images["constraints"].update(
+                json.loads(str(self.constraints)))
 
         while (not self.limit) or (offset < self.limit):
             find_images["offset"] = offset
@@ -125,7 +136,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                 _,
             ) = db.query([{"FindImage": find_images}])
             if self._response_status(res) != 0:
-                raise ValueError(f"Failed to query images: {db.get_last_response_str()}")
+                raise ValueError(
+                    f"Failed to query images: {db.get_last_response_str()}")
             fe_result = res[0]["FindImage"]
             if fe_result["returned"] == 0:
                 return
@@ -188,7 +200,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         ]
 
         if self.predictions:
-            pred_constraints = json.loads(str(self.pred_constraints)) if self.pred_constraints else {}
+            pred_constraints = json.loads(
+                str(self.pred_constraints)) if self.pred_constraints else {}
             query.append(
                 {
                     "FindBoundingBox": {
@@ -211,7 +224,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         anns = []
         preds = []
         if status != 0:
-            raise ValueError(f"Error retrieving ApertureDB image data : {db.get_last_response_str()}")
+            raise ValueError(
+                f"Error retrieving ApertureDB image data : {db.get_last_response_str()}")
         if "entities" in res[0]["FindImage"]:
             img = res[0]["FindImage"]["entities"][0] or {}
             anns = res[1]["FindEntity"]["entities"] if res[1]["FindEntity"]["returned"] > 0 else []
@@ -219,7 +233,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
             anns = [{"result": ann["result"]} for ann in anns]
 
             if self.predictions:
-                bboxen = res[2]["FindBoundingBox"]["entities"] if res[2]["FindBoundingBox"]["returned"] > 0 else []
+                bboxen = res[2]["FindBoundingBox"]["entities"] if res[2]["FindBoundingBox"]["returned"] > 0 else [
+                ]
                 preds = self._adb_to_rectanglelabels(img, bboxen)
         return anns, preds
 
@@ -256,7 +271,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
             return blob[0]
         if status == 1:  # empty
             return None
-        raise ValueError(f"Error retrieving ApertureDB image data : {db.get_last_response_str()}")
+        raise ValueError(
+            f"Error retrieving ApertureDB image data : {db.get_last_response_str()}")
 
     def scan_and_create_links(self):
         try:
@@ -301,7 +317,8 @@ class AnnotationBBox:
             raise ValueError(f"annotation value must have 0 rotation")
         self.labels = val["rectanglelabels"] if "rectanglelabels" in val else []
         if len(self.labels) > 1:
-            raise ValueError(f"rectangle annotation can have at most one label: {','.join(self.labels)}")
+            raise ValueError(
+                f"rectangle annotation can have at most one label: {','.join(self.labels)}")
         self.text = val["text"] if "text" in val else []
 
     @staticmethod
@@ -309,7 +326,8 @@ class AnnotationBBox:
         a_val = a[attr] if isinstance(a, dict) else getattr(a, attr)
         b_val = b[attr] if isinstance(b, dict) else getattr(b, attr)
         if a_val != b_val:
-            raise ValueError(f"Annotations have mismatched {attr}: {a_val} != {b_val}")
+            raise ValueError(
+                f"Annotations have mismatched {attr}: {a_val} != {b_val}")
 
     def merge(self, other):
         if not isinstance(other, AnnotationBBox):
@@ -322,18 +340,21 @@ class AnnotationBBox:
         self._attr_must_match(self.rect, other.rect, "height")
         self.labels.extend(other.labels)
         if len(self.labels) > 1:
-            raise ValueError(f"rectangle annotation can have at most one label: {','.join(self.labels)}")
+            raise ValueError(
+                f"rectangle annotation can have at most one label: {','.join(self.labels)}")
         self.text.extend(other.text)
 
 
 class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
     def save_annotation(self, annotation):
         db = self.get_connection()
-        logger.debug(f"Creating new object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")
+        logger.debug(
+            f"Creating new object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")
         ser_annotation = self._get_serialized_data(annotation)
 
         bbox_map = {}
-        regions = annotation.result if isinstance(annotation.result, list) else [annotation.result]
+        regions = annotation.result if isinstance(
+            annotation.result, list) else [annotation.result]
         for ann in regions:
             if not "type" in ann:
                 continue
@@ -415,7 +436,8 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                             },
                         }
                     },
-                    {"AddConnection": {"class": "LS_annotation_region", "src": 2, "dst": ref, "if_not_found": {}}},
+                    {"AddConnection": {"class": "LS_annotation_region",
+                                       "src": 2, "dst": ref, "if_not_found": {}}},
                 ]
             )
             ref += 1
@@ -423,15 +445,18 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
         res, _ = db.query(query)
         status = self._response_status(res)
         if status not in (0, 2):
-            raise ValueError(f"Error saving annotation data to ApertureDB : {db.get_last_response_str()}")
+            raise ValueError(
+                f"Error saving annotation data to ApertureDB : {db.get_last_response_str()}")
 
     def delete_annotation(self, annotation):
         db = self.get_connection()
-        logger.debug(f"Deleting object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")
+        logger.debug(
+            f"Deleting object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")
 
         ann_id = str(annotation.id)
         query = [
-            {"FindEntity": {"with_class": "LS_annotation", "constraints": {"LS_id": ["==", ann_id]}, "_ref": 1}},
+            {"FindEntity": {"with_class": "LS_annotation",
+                            "constraints": {"LS_id": ["==", ann_id]}, "_ref": 1}},
             {
                 "FindBoundingBox": {
                     "is_connected_to": {"ref": 1, "connection_class": "LS_annotation_region"},
@@ -445,21 +470,25 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
         res, _ = db.query(query)
         status = self._response_status(res)
         if status not in (0, 2):
-            raise ValueError(f"Error deleting annotation data from ApertureDB : {db.get_last_response_str()}")
+            raise ValueError(
+                f"Error deleting annotation data from ApertureDB : {db.get_last_response_str()}")
 
 
 def async_aperturedb_annotation_operation(annotation, operation):
     project = annotation.project
     if hasattr(project, "io_storages_aperturedbexportstorages"):
         for storage in project.io_storages_aperturedbexportstorages.all():
-            logger.debug(f"{operation} {annotation} in ApertureDB storage {storage}")
+            logger.debug(
+                f"{operation} {annotation} in ApertureDB storage {storage}")
             getattr(storage, operation)(annotation)
 
 
 def enqueue_aperturedb_annotation_operation(annotation, operation):
-    storages = getattr(annotation.project, "io_storages_aperturedbexportstorages", None)
+    storages = getattr(annotation.project,
+                       "io_storages_aperturedbexportstorages", None)
     if storages and storages.exists():  # avoid excess jobs in rq
-        start_job_async_or_sync(async_aperturedb_annotation_operation, annotation, operation)
+        start_job_async_or_sync(
+            async_aperturedb_annotation_operation, annotation, operation)
 
 
 @receiver(post_save, sender=Annotation)
@@ -473,8 +502,10 @@ def delete_annotation_from_aperturedb_storages(sender, instance, **kwargs):
 
 
 class ApertureDBImportStorageLink(ImportStorageLink):
-    storage = models.ForeignKey(ApertureDBImportStorage, on_delete=models.CASCADE, related_name="links")
+    storage = models.ForeignKey(
+        ApertureDBImportStorage, on_delete=models.CASCADE, related_name="links")
 
 
 class ApertureDBExportStorageLink(ExportStorageLink):
-    storage = models.ForeignKey(ApertureDBExportStorage, on_delete=models.CASCADE, related_name="links")
+    storage = models.ForeignKey(
+        ApertureDBExportStorage, on_delete=models.CASCADE, related_name="links")
