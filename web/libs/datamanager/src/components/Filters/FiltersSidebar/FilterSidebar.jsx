@@ -5,7 +5,7 @@ import { Block, Elem } from "../../../utils/bem";
 import { Button } from "../../Common/Button/Button";
 import { Icon } from "../../Common/Icon/Icon";
 import { Filters } from "../Filters";
-import "./FilterSidebar.styl";
+import "./FilterSidebar.scss";
 
 const sidebarInjector = inject(({ store }) => {
   const viewsStore = store.viewsStore;
@@ -19,7 +19,7 @@ const sidebarInjector = inject(({ store }) => {
 
 export const FiltersSidebar = sidebarInjector(({ viewsStore, sidebarEnabled, sidebarVisible }) => {
   return sidebarEnabled && sidebarVisible ? (
-    <Block name="sidebar">
+    <Block name="filters-sidebar">
       <Elem name="header">
         <Elem name="extra">
           <Button

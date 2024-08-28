@@ -2,7 +2,7 @@ import React, { cloneElement, forwardRef, useMemo } from "react";
 import { Block, Elem } from "../../../utils/bem";
 import { FF_LOPS_E_10, isFF } from "../../../utils/feature-flags";
 import { isDefined } from "../../../utils/utils";
-import "./Button.styl";
+import "./Button.scss";
 
 export const Button = forwardRef(
   ({ children, type, extra, className, href, size, waiting, icon, tag, look, ...rest }, ref) => {
@@ -33,7 +33,15 @@ export const Button = forwardRef(
     }, [icon, size]);
 
     return (
-      <Block ref={ref} name="button" tag={finalTag} mod={mods} className={className?.toString()} type={type} {...rest}>
+      <Block
+        ref={ref}
+        name="button-dm"
+        tag={finalTag}
+        mod={mods}
+        className={className?.toString()}
+        type={type}
+        {...rest}
+      >
         <>
           {isDefined(iconElem) && (
             <Elem tag="span" name="icon">
@@ -57,7 +65,7 @@ Button.displayName = "Button";
 
 Button.Group = ({ className, children, collapsed, ...rest }) => {
   return (
-    <Block name="button-group" mod={{ collapsed }} mix={className} {...rest}>
+    <Block name="button-group-dm" mod={{ collapsed }} mix={className} {...rest}>
       {children}
     </Block>
   );

@@ -2,7 +2,7 @@ import color from "chroma-js";
 import React from "react";
 import { Block } from "../../../utils/bem";
 import { colors } from "../../../utils/colors";
-import "./Tag.styl";
+import "./Tag.scss";
 
 const prepareColor = (colorString) => {
   const baseColor = color(colorString);
@@ -30,7 +30,7 @@ export const Tag = ({ className, style, size, color, children }) => {
   const styles = { ...(style ?? {}), ...finalColor };
 
   return (
-    <Block tag="span" name="tag" mod={{ size }} mix={className} style={styles}>
+    <Block tag="span" name="tag-dm" mod={{ size }} mix={className} style={styles}>
       {children}
     </Block>
   );

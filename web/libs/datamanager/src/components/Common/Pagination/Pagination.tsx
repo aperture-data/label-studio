@@ -11,7 +11,7 @@ import {
 import { Block, Elem } from "../../../utils/bem";
 import { clamp, isDefined } from "../../../utils/helpers";
 import { useValueTracker } from "../Form/Utils";
-import "./Pagination.styl";
+import "./Pagination.scss";
 import { useUpdateEffect } from "../../../hooks/useUpdateEffect";
 import { Select } from "../Form/Elements";
 
@@ -217,7 +217,7 @@ export const Pagination: FC<PaginationProps> = forwardRef<any, PaginationProps>(
     }, []);
 
     return totalPages > 1 || alwaysVisible ? (
-      <Block name="pagination" mod={{ disabled, size, waiting }} style={props.style}>
+      <Block name="pagination-dm" mod={{ disabled, size, waiting }} style={props.style}>
         {props.label && isDefined(pageSize) && showTitle && (
           <Elem name="label">
             {props.label}: {visibleItems.start}-{visibleItems.end}

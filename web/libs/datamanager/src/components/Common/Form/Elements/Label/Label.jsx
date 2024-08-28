@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { Block, Elem } from "../../../../../utils/bem";
-import "./Label.styl";
+import "./Label.scss";
 
 const Label = forwardRef(
   ({ text, children, required, placement, description, size, large, style, simple, flat }, ref) => {
@@ -15,7 +15,7 @@ const Label = forwardRef(
     };
 
     return (
-      <Block ref={ref} name="label" tag={tagName} style={style} mod={mods} data-required={required}>
+      <Block ref={ref} name="label-dm" tag={tagName} style={style} mod={mods} data-required={required}>
         <Elem name="text">
           <Elem name="content">
             {text}

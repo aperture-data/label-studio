@@ -6,12 +6,12 @@ import { customTypes } from "../../core/CustomTypes";
 import { AnnotationMixin } from "../../mixins/AnnotationMixin";
 import SeparatedControlMixin from "../../mixins/SeparatedControlMixin";
 import { ToolManagerMixin } from "../../mixins/ToolManagerMixin";
-import { FF_DEV_2132, FF_DEV_3793, FF_LSDV_4673, isFF } from "../../utils/feature-flags";
 
 /**
  * The `Rectangle` tag is used to add a rectangle (Bounding Box) to an image without selecting a label. This can be useful when you have only one label to assign to a rectangle.
  *
  * Use with the following data types: image.
+ *
  * @example
  * <!--Basic labeling configuration for adding rectangular bounding box regions to an image -->
  * <View>
@@ -27,7 +27,7 @@ import { FF_DEV_2132, FF_DEV_3793, FF_LSDV_4673, isFF } from "../../utils/featur
  * @param {string=} [fillColor]           - Rectangle fill color in hexadecimal
  * @param {string=} [strokeColor=#f48a42] - Stroke color in hexadecimal
  * @param {number=} [strokeWidth=1]       - Width of the stroke
- * @param {boolean=} [canRotate=true]     - Whether to show or hide rotation control
+ * @param {boolean=} [canRotate=true]     - Whether to show or hide rotation control. Note that the anchor point in the results is different than the anchor point used when rotating with the rotation tool. For more information, see [Rotation](/templates/image_bbox#Rotation).
  * @param {boolean} [smart]               - Show smart tool for interactive pre-annotations
  * @param {boolean} [smartOnly]           - Only show smart tool for interactive pre-annotations
  */
@@ -49,7 +49,7 @@ const Model = types
     type: "rectangle",
   })
   .volatile(() => ({
-    toolNames: isFF(FF_DEV_2132) && (!isFF(FF_DEV_3793) || isFF(FF_LSDV_4673)) ? ["Rect", "Rect3Point"] : ["Rect"],
+    toolNames: ["Rect", "Rect3Point"],
   }));
 
 const RectangleModel = types.compose(

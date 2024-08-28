@@ -1,7 +1,7 @@
 import React from "react";
 import { Block, Elem } from "../../../utils/bem";
 import { FF_LOPS_E_10, isFF } from "../../../utils/feature-flags";
-import "./RadioGroup.styl";
+import "./RadioGroup.scss";
 
 const RadioContext = React.createContext();
 
@@ -17,7 +17,7 @@ export const RadioGroup = ({ size, value, onChange, children, ...rest }) => {
         onChange: onRadioChange,
       }}
     >
-      <Block name="radio-group" mod={{ size, newUI: isFF(FF_LOPS_E_10) }} {...rest}>
+      <Block name="radio-group-dm" mod={{ size, newUI: isFF(FF_LOPS_E_10) }} {...rest}>
         <Elem name="buttons">{children}</Elem>
       </Block>
     </RadioContext.Provider>

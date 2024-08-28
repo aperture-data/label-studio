@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useMemo, useState } from "react";
 import { cn } from "../../../../../utils/bem";
 import { FormField } from "../../FormField";
 import { default as Label } from "../Label/Label";
-import "./Toggle.styl";
+import "./Toggle.scss";
 
 const Toggle = forwardRef(
   (
@@ -21,7 +21,7 @@ const Toggle = forwardRef(
     },
     ref,
   ) => {
-    const rootClass = cn("toggle");
+    const rootClass = cn("toggle-dm");
     const initialChecked = useMemo(() => defaultChecked ?? checked ?? false, [defaultChecked, checked]);
     const [isChecked, setIsChecked] = useState(defaultChecked ?? checked ?? false);
 

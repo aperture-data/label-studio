@@ -2,6 +2,7 @@ import insertAfter from "insert-after";
 import * as Checkers from "./utilities";
 import sanitizeHTML from "sanitize-html";
 import Canvas from "./canvas";
+import { cn } from "./bem";
 
 // fast way to change labels visibility for all text regions
 function toggleLabelsAndScores(show) {
@@ -16,19 +17,21 @@ function toggleLabelsAndScores(show) {
       else el.classList.add("htx-no-label");
     });
   };
+  const richtextClassName = cn("htx-richtext").toClassName();
 
   toggleInDocument(document);
   document
-    .querySelectorAll("iframe.lsf-htx-richtext")
+    .querySelectorAll(`iframe.${richtextClassName}`)
     .forEach((iframe) => toggleInDocument(iframe.contentWindow.document));
 }
 
 const labelWithCSS = (() => {
   const cache = {};
 
-  return (node, { labels, score }) => {
+  return (node, { index, labels, score }) => {
     const labelsStr = labels ? labels.join(",") : "";
-    const clsName = Checkers.hashCode(labelsStr + score);
+    const labelText = [index, labelsStr].filter(Boolean).join(":");
+    const clsName = Checkers.hashCode(labelText + score);
 
     let cssCls = `htx-label-${clsName}`;
 
@@ -38,7 +41,7 @@ const labelWithCSS = (() => {
 
     node.setAttribute("data-labels", labelsStr);
 
-    const resSVG = Canvas.labelToSVG({ label: labelsStr, score });
+    const resSVG = Canvas.labelToSVG({ label: labelText, score });
     const svgURL = `url(${resSVG})`;
 
     createClass(`.${cssCls}:after`, `content:${svgURL}`);
@@ -499,10 +502,10 @@ export const htmlEscape = (string) => {
 
 function findNodeAt(context, at) {
   for (let node = context.firstChild, l = 0; node; ) {
-    if (node.textContent.length + l >= at)
+    if (node.textContent.length + l >= at) {
       if (!node.firstChild) return [node, at - l];
-      else node = node.firstChild;
-    else {
+      node = node.firstChild;
+    } else {
       l += node.textContent.length;
       node = node.nextSibling;
     }
