@@ -10,7 +10,6 @@ adb_host_config: &adb_host_config
   - type: number
     name: port
     label: Port
-    value: 55555
   - type: text
     name: username
     label: User Name
@@ -53,7 +52,6 @@ ImportStorage:
         name: limit
         label: Limit (optional)
         description: Maximum number of images to import
-        value: 1000
         min: 1
 
 ExportStorage:
