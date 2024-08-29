@@ -9,6 +9,7 @@ from core.permissions import AllPermissions
 from core.utils.db import fast_first
 from data_manager.functions import DataManagerException
 from django.conf import settings
+from io_storages.aperturedb.models import ApertureDBImportStorageLink
 from tasks.models import Annotation, Task
 from tasks.serializers import TaskSerializerBulk
 
@@ -20,9 +21,11 @@ def propagate_annotations(project, queryset, **kwargs):
     request = kwargs['request']
     user = request.user
     source_annotation_id = request.data.get('source_annotation_id')
-    annotations = Annotation.objects.filter(project=project, id=source_annotation_id)
+    annotations = Annotation.objects.filter(
+        project=project, id=source_annotation_id)
     if not annotations:
-        raise DataManagerException(f'Source annotation {source_annotation_id} not found in the current project')
+        raise DataManagerException(
+            f'Source annotation {source_annotation_id} not found in the current project')
     source_annotation = annotations.first()
 
     tasks = set(queryset.values_list('id', flat=True))
@@ -42,13 +45,17 @@ def propagate_annotations(project, queryset, **kwargs):
             'parent_annotation_id': source_annotation.id,
             'project': project,
         }
-        body = TaskSerializerBulk.add_annotation_fields(body, user, 'propagated_annotation')
+        body = TaskSerializerBulk.add_annotation_fields(
+            body, user, 'propagated_annotation')
         db_annotations.append(Annotation(**body))
 
-    db_annotations = Annotation.objects.bulk_create(db_annotations, batch_size=settings.BATCH_SIZE)
-    TaskSerializerBulk.post_process_annotations(user, db_annotations, 'propagated_annotation')
+    db_annotations = Annotation.objects.bulk_create(
+        db_annotations, batch_size=settings.BATCH_SIZE)
+    TaskSerializerBulk.post_process_annotations(
+        user, db_annotations, 'propagated_annotation')
     # Update counters for tasks and is_labeled. It should be a single operation as counters affect bulk is_labeled update
-    project.update_tasks_counters_and_is_labeled(tasks_queryset=Task.objects.filter(id__in=tasks))
+    project.update_tasks_counters_and_is_labeled(
+        tasks_queryset=Task.objects.filter(id__in=tasks))
     return {
         'response_code': 200,
         'detail': f'Created {len(db_annotations)} annotations',
@@ -75,12 +82,14 @@ def rename_labels(project, queryset, **kwargs):
 
     labels = project.get_parsed_config()
     if control_tag not in labels:
-        raise Exception('Wrong old label name, it is not from labeling config: ' + old_label_name)
+        raise Exception(
+            'Wrong old label name, it is not from labeling config: ' + old_label_name)
     label_type = labels[control_tag]['type'].lower()
 
     annotations = Annotation.objects.filter(project=project)
     if settings.DJANGO_DB == settings.DJANGO_DB_SQLITE:
-        annotations = annotations.filter(result__icontains=control_tag).filter(result__icontains=old_label_name)
+        annotations = annotations.filter(result__icontains=control_tag).filter(
+            result__icontains=old_label_name)
     else:
         annotations = annotations.filter(result__contains=[{'from_name': control_tag}]).filter(
             result__contains=[{'value': {label_type: [old_label_name]}}]
@@ -147,7 +156,8 @@ def rename_labels_form(user, project):
                     'label': 'Old label name',
                     'options': list(set(old_names)),
                 },
-                {'type': 'input', 'name': 'new_label_name', 'label': 'New label name'},
+                {'type': 'input', 'name': 'new_label_name',
+                    'label': 'New label name'},
             ],
         }
     ]
@@ -197,7 +207,8 @@ def process_arrays(params):
     start, end = params.find('['), -1
     while start != end:
         end = start + params[start:].find(']') + 1
-        params = params[0:start] + params[start:end].replace(',', ';') + params[end:]
+        params = params[0:start] + \
+            params[start:end].replace(',', ';') + params[end:]
         start = end + params[end:].find('[') + 1
     return params
 
@@ -251,20 +262,24 @@ def add_expression(queryset, size, value, value_name):
             'choices(values:list, weights:list) ' 'should have 1 or 2 args: values & weights (default=None)'
         )
         weights = json.loads(args[1]) if len(args) == 2 else None
-        values = random.choices(population=json.loads(args[0]), weights=weights, k=size)
+        values = random.choices(population=json.loads(
+            args[0]), weights=weights, k=size)
         for i, v in enumerate(values):
             tasks[i].data[value_name] = v
 
     # replace
     elif command == 'replace':
-        assert len(args) == 2, 'replace(old_value:str, new_value:str) should have 2 args: old value & new value'
+        assert len(
+            args) == 2, 'replace(old_value:str, new_value:str) should have 2 args: old value & new value'
         old_value, new_value = json.loads(args[0]), json.loads(args[1])
         for task in tasks:
             if value_name in task.data:
-                task.data[value_name] = task.data[value_name].replace(old_value, new_value)
+                task.data[value_name] = task.data[value_name].replace(
+                    old_value, new_value)
 
     else:
-        raise Exception('Undefined expression, you can use: ' + add_data_field_examples)
+        raise Exception('Undefined expression, you can use: ' +
+                        add_data_field_examples)
 
     Task.objects.bulk_update(tasks, fields=['data'], batch_size=1000)
 

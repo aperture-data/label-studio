@@ -31,10 +31,14 @@ from django.template import loader
 from django.utils._os import safe_join
 from drf_yasg.utils import swagger_auto_schema
 from io_storages.localfiles.models import LocalFilesImportStorage
+from io_storages.aperturedb.models import ApertureDBImportStorage
 from ranged_fileresponse import RangedFileResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+import urllib.request
+import aperturedb
+import magic
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +81,8 @@ def version_page(request):
             }
 
         result = json.dumps(result, indent=2)
-        result = result.replace('},', '},\n').replace('\\n', ' ').replace('\\r', '')
+        result = result.replace('},', '},\n').replace(
+            '\\n', ' ').replace('\\r', '')
         return HttpResponse('<pre>' + result + '</pre>')
     else:
         return JsonResponse(result)
@@ -142,7 +147,8 @@ def samples_time_series(request):
         value_columns = range(1, max_column_n + 1)
 
     ts = generate_time_series_json(time_column, value_columns, time_format)
-    csv_data = pd.DataFrame.from_dict(ts).to_csv(index=False, header=header, sep=separator).encode('utf-8')
+    csv_data = pd.DataFrame.from_dict(ts).to_csv(
+        index=False, header=header, sep=separator).encode('utf-8')
 
     # generate response data as file
     filename = 'time-series.csv'
@@ -193,10 +199,12 @@ def localfiles_data(request):
         # storage.path=/home/user, full_path=/home/user/a/b/c/1.jpg =>
         # full_path.startswith(path) => True
         localfiles_storage = LocalFilesImportStorage.objects.annotate(
-            _full_path=Value(os.path.dirname(full_path), output_field=CharField())
+            _full_path=Value(os.path.dirname(full_path),
+                             output_field=CharField())
         ).filter(_full_path__startswith=F('path'))
         if localfiles_storage.exists():
-            user_has_permissions = any(storage.project.has_permission(user) for storage in localfiles_storage)
+            user_has_permissions = any(storage.project.has_permission(
+                user) for storage in localfiles_storage)
 
         if user_has_permissions and os.path.exists(full_path):
             content_type, encoding = mimetypes.guess_type(str(full_path))
@@ -204,6 +212,30 @@ def localfiles_data(request):
             return RangedFileResponse(request, open(full_path, mode='rb'), content_type)
         else:
             return HttpResponseNotFound()
+
+    return HttpResponseForbidden()
+
+
+def aperturedb_data(request):
+    """Serving files for ApertureDBImportStorage"""
+    user = request.user
+    title = request.GET.get('title')
+    uid = request.GET.get('key')
+    if title and uid and user.is_authenticated:
+        for storage in ApertureDBImportStorage.objects.all():
+            if (storage.title == title) or (title == "none" and not storage.title):
+                if storage.project.has_permission(user):
+                    blob = storage.get_blob(uid)
+                    if blob is None:
+                        logger.warning(
+                            f"ApertureDB image not found, uid={uid}")
+                        return HttpResponseNotFound()
+                    content_type = magic.from_buffer(blob, mime=True)
+                    with io.BytesIO(blob) as payload:
+                        return HttpResponse(payload, content_type=content_type)
+
+        logger.warning(f"ApertureDB import storage '{title}' not found")
+        return HttpResponseNotFound()
 
     return HttpResponseForbidden()
 

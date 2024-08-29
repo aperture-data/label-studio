@@ -85,7 +85,8 @@ logger = logging.getLogger(__name__)
     Retrieve a list of tasks with pagination for a specific view or project, by using filters and ordering.
     """,
         manual_parameters=[
-            openapi.Parameter(name='view', type=openapi.TYPE_INTEGER, in_=openapi.IN_QUERY, description='View ID'),
+            openapi.Parameter(name='view', type=openapi.TYPE_INTEGER,
+                              in_=openapi.IN_QUERY, description='View ID'),
             openapi.Parameter(
                 name='project', type=openapi.TYPE_INTEGER, in_=openapi.IN_QUERY, description='Project ID'
             ),
@@ -180,7 +181,8 @@ class TaskListAPI(DMTaskListAPI):
         context = super().get_serializer_context()
         project_id = self.request.data.get('project')
         if project_id:
-            context['project'] = generics.get_object_or_404(Project, pk=project_id)
+            context['project'] = generics.get_object_or_404(
+                Project, pk=project_id)
         return context
 
     def perform_create(self, serializer):
@@ -188,7 +190,8 @@ class TaskListAPI(DMTaskListAPI):
         project = generics.get_object_or_404(Project, pk=project_id)
         instance = serializer.save(project=project)
         emit_webhooks_for_instance(
-            self.request.user.active_organization, project, WebhookAction.TASKS_CREATED, [instance]
+            self.request.user.active_organization, project, WebhookAction.TASKS_CREATED, [
+                instance]
         )
 
 
@@ -204,7 +207,8 @@ class TaskListAPI(DMTaskListAPI):
         Get task data, metadata, annotations and other attributes for a specific labeling task by task ID.
         """,
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_STRING, in_=openapi.IN_PATH, description='Task ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_STRING,
+                              in_=openapi.IN_PATH, description='Task ID'),
         ],
         request_body=no_body,
         responses={
@@ -226,7 +230,8 @@ class TaskListAPI(DMTaskListAPI):
         operation_summary='Update task',
         operation_description='Update the attributes of an existing labeling task.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_STRING, in_=openapi.IN_PATH, description='Task ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_STRING,
+                              in_=openapi.IN_PATH, description='Task ID'),
         ],
         request_body=task_request_schema,
         responses={
@@ -246,7 +251,8 @@ class TaskListAPI(DMTaskListAPI):
         operation_summary='Delete task',
         operation_description='Delete a task in Label Studio. This action cannot be undone!',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_STRING, in_=openapi.IN_PATH, description='Task ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_STRING,
+                              in_=openapi.IN_PATH, description='Task ID'),
         ],
         request_body=no_body,
     ),
@@ -276,6 +282,7 @@ class TaskAPI(generics.RetrieveUpdateDestroyAPIView):
             'io_storages_localfilesimportstoragelink',
             'io_storages_redisimportstoragelink',
             'io_storages_s3importstoragelink',
+            'io_storages_aperturedbimportstoragelink',
             'file_upload',
             'project__ml_backends',
         )
@@ -317,7 +324,8 @@ class TaskAPI(generics.RetrieveUpdateDestroyAPIView):
             kwargs = {'fields_for_evaluation': ['annotators', 'reviewed']}
         else:
             kwargs = {'all_fields': True}
-        project = self.request.query_params.get('project') or self.request.data.get('project')
+        project = self.request.query_params.get(
+            'project') or self.request.data.get('project')
         if not project:
             project = task.project.id
         return self.prefetch(
@@ -416,7 +424,8 @@ class AnnotationAPI(generics.RetrieveUpdateDestroyAPIView):
         # save user history with annotator_id, time & annotation result
         annotation = self.get_object()
         # use updated instead of save to avoid duplicated signals
-        Annotation.objects.filter(id=annotation.id).update(updated_by=request.user)
+        Annotation.objects.filter(id=annotation.id).update(
+            updated_by=request.user)
 
         task = annotation.task
         if self.request.data.get('ground_truth'):
@@ -457,7 +466,8 @@ class AnnotationAPI(generics.RetrieveUpdateDestroyAPIView):
         operation_summary='Get all task annotations',
         operation_description='List all annotations for a task.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER, in_=openapi.IN_PATH, description='Task ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER,
+                              in_=openapi.IN_PATH, description='Task ID'),
         ],
         request_body=no_body,
         responses={
@@ -494,7 +504,8 @@ class AnnotationAPI(generics.RetrieveUpdateDestroyAPIView):
         ```
         """,
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER, in_=openapi.IN_PATH, description='Task ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER,
+                              in_=openapi.IN_PATH, description='Task ID'),
         ],
         request_body=annotation_request_schema,
         responses={
@@ -524,7 +535,8 @@ class AnnotationsListAPI(GetParentObjectMixin, generics.ListCreateAPIView):
         return super(AnnotationsListAPI, self).post(request, *args, **kwargs)
 
     def get_queryset(self):
-        task = generics.get_object_or_404(Task.objects.for_user(self.request.user), pk=self.kwargs.get('pk', 0))
+        task = generics.get_object_or_404(Task.objects.for_user(
+            self.request.user), pk=self.kwargs.get('pk', 0))
         return Annotation.objects.filter(Q(task=task) & Q(was_cancelled=False)).order_by('pk')
 
     def delete_draft(self, draft_id, annotation_id):
@@ -545,23 +557,28 @@ class AnnotationsListAPI(GetParentObjectMixin, generics.ListCreateAPIView):
 
         # updates history
         result = ser.validated_data.get('result')
-        extra_args = {'task_id': self.kwargs['pk'], 'project_id': task.project_id}
+        extra_args = {
+            'task_id': self.kwargs['pk'], 'project_id': task.project_id}
 
         # save stats about how well annotator annotations coincide with current prediction
         # only for finished task annotations
         if result is not None:
-            prediction = Prediction.objects.filter(task=task, model_version=task.project.model_version)
+            prediction = Prediction.objects.filter(
+                task=task, model_version=task.project.model_version)
             if prediction.exists():
                 prediction = prediction.first()
                 prediction_ser = PredictionSerializer(prediction).data
             else:
-                logger.debug(f'User={self.request.user}: there are no predictions for task={task}')
+                logger.debug(
+                    f'User={self.request.user}: there are no predictions for task={task}')
                 prediction_ser = {}
             # serialize annotation
-            extra_args.update({'prediction': prediction_ser, 'updated_by': user})
+            extra_args.update(
+                {'prediction': prediction_ser, 'updated_by': user})
 
         if 'was_cancelled' in self.request.GET:
-            extra_args['was_cancelled'] = bool_from_request(self.request.GET, 'was_cancelled', False)
+            extra_args['was_cancelled'] = bool_from_request(
+                self.request.GET, 'was_cancelled', False)
 
         if 'completed_by' not in ser.validated_data:
             extra_args['completed_by'] = self.request.user
@@ -571,7 +588,8 @@ class AnnotationsListAPI(GetParentObjectMixin, generics.ListCreateAPIView):
         if draft:
             # draft permission check
             if draft.task_id != task.id or not draft.has_permission(user) or draft.user_id != user.id:
-                raise PermissionDenied(f'You have no permission to draft id:{draft_id}')
+                raise PermissionDenied(
+                    f'You have no permission to draft id:{draft_id}')
 
         if draft is not None and flag_set(
             'fflag_feat_back_lsdv_5035_use_created_at_from_draft_for_annotation_256052023_short', user='auto'
@@ -593,11 +611,13 @@ class AnnotationsListAPI(GetParentObjectMixin, generics.ListCreateAPIView):
 
         # if annotation created from draft - remove this draft
         if draft_id is not None:
-            logger.debug(f'Remove draft {draft_id} after creating annotation {annotation.id}')
+            logger.debug(
+                f'Remove draft {draft_id} after creating annotation {annotation.id}')
             self.delete_draft(draft_id, annotation.id)
 
         if self.request.data.get('ground_truth'):
-            annotation.task.ensure_unique_groundtruth(annotation_id=annotation.id)
+            annotation.task.ensure_unique_groundtruth(
+                annotation_id=annotation.id)
 
         fill_history_annotation(user, task, annotation)
 
@@ -622,8 +642,10 @@ class AnnotationDraftListAPI(generics.ListCreateAPIView):
         task_id = self.kwargs['pk']
         annotation_id = self.kwargs.get('annotation_id')
         user = self.request.user
-        logger.debug(f'User {user} is going to create draft for task={task_id}, annotation={annotation_id}')
-        serializer.save(task_id=self.kwargs['pk'], annotation_id=annotation_id, user=self.request.user)
+        logger.debug(
+            f'User {user} is going to create draft for task={task_id}, annotation={annotation_id}')
+        serializer.save(
+            task_id=self.kwargs['pk'], annotation_id=annotation_id, user=self.request.user)
 
 
 class AnnotationDraftAPI(generics.RetrieveUpdateDestroyAPIView):
@@ -702,7 +724,8 @@ class AnnotationDraftAPI(generics.RetrieveUpdateDestroyAPIView):
         operation_summary='Get prediction details',
         operation_description='Get details about a specific prediction by its ID.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER, in_=openapi.IN_PATH, description='Prediction ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER,
+                              in_=openapi.IN_PATH, description='Prediction ID'),
         ],
         request_body=no_body,
         responses={
@@ -722,7 +745,8 @@ class AnnotationDraftAPI(generics.RetrieveUpdateDestroyAPIView):
         x_fern_audiences=['internal'],
         operation_description='Overwrite prediction data by prediction ID.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER, in_=openapi.IN_PATH, description='Prediction ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER,
+                              in_=openapi.IN_PATH, description='Prediction ID'),
         ],
         request_body=prediction_request_schema,
         responses={
@@ -744,7 +768,8 @@ class AnnotationDraftAPI(generics.RetrieveUpdateDestroyAPIView):
         operation_summary='Update prediction',
         operation_description='Update prediction data by prediction ID.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER, in_=openapi.IN_PATH, description='Prediction ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER,
+                              in_=openapi.IN_PATH, description='Prediction ID'),
         ],
         request_body=prediction_request_schema,
         responses={
@@ -766,7 +791,8 @@ class AnnotationDraftAPI(generics.RetrieveUpdateDestroyAPIView):
         operation_summary='Delete prediction',
         operation_description='Delete a prediction by prediction ID.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER, in_=openapi.IN_PATH, description='Prediction ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_INTEGER,
+                              in_=openapi.IN_PATH, description='Prediction ID'),
         ],
         request_body=no_body,
     ),
@@ -798,7 +824,8 @@ class PredictionAPI(viewsets.ModelViewSet):
     ),
 )
 class AnnotationConvertAPI(generics.RetrieveAPIView):
-    permission_required = ViewClassPermission(POST=all_permissions.annotations_change)
+    permission_required = ViewClassPermission(
+        POST=all_permissions.annotations_change)
     queryset = Annotation.objects.all()
 
     def process_intermediate_state(self, annotation, draft):
@@ -824,6 +851,7 @@ class AnnotationConvertAPI(generics.RetrieveAPIView):
 
             annotation.delete()
 
-        emit_webhooks_for_instance(organization, project, WebhookAction.ANNOTATIONS_DELETED, [pk])
+        emit_webhooks_for_instance(
+            organization, project, WebhookAction.ANNOTATIONS_DELETED, [pk])
         data = AnnotationDraftSerializer(instance=draft).data
         return Response(status=201, data=data)

@@ -1,0 +1,61 @@
+# 2x3 grid
+adb_host_config: &adb_host_config
+  - type: text
+    name: title
+    label: Storage Title
+  - type: text
+    name: hostname
+    label: Hostname
+    required: true
+  - type: number
+    name: port
+    label: Port
+    value: 55555
+  - type: text
+    name: username
+    label: User Name
+    required: true
+  - type: password
+    name: password
+    label: Password
+    autoComplete: "off"
+    skipAutofill: true
+    allowEmpty: true
+    protectedValue: true
+  - type: password
+    name: token
+    label: Token
+    autoComplete: "off"
+    skipAutofill: true
+    allowEmpty: true
+    protectedValue: true
+
+ImportStorage:
+  - columnCount: 3
+    fields: *adb_host_config
+  - columnCount: 1
+    fields:
+      - type: json
+        name: constraints
+        label: Image Constraints (optional)
+        description: ApertureDB FindImage constraints (see https://docs.aperturedata.io/query_language/Reference/shared_command_parameters/constraints)
+      - type: toggle
+        name: as_format_jpg
+        label: Convert Images to JPEG
+      - type: toggle
+        name: predictions
+        label: Include Bounding Box Predictions
+      - type: json
+        name: pred_constraints
+        label: Prediction Constraints (optional)
+        description: ApertureDB constraints on bounding box predictions (see https://docs.aperturedata.io/query_language/Reference/shared_command_parameters/constraints)
+      - type: number
+        name: limit
+        label: Limit (optional)
+        description: Maximum number of images to import
+        value: 1000
+        min: 1
+
+ExportStorage:
+  - columnCount: 3
+    fields: *adb_host_config    

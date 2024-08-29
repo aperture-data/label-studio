@@ -40,7 +40,8 @@ _view_request_body = openapi.Schema(
         'data': openapi.Schema(
             type=openapi.TYPE_OBJECT,
             description='Custom view data',
-            properties={'filters': filters_schema, 'ordering': ordering_schema},
+            properties={'filters': filters_schema,
+                        'ordering': ordering_schema},
         ),
         'project': openapi.Schema(type=openapi.TYPE_INTEGER, description='Project ID'),
     },
@@ -86,7 +87,8 @@ _view_request_body = openapi.Schema(
         operation_summary='Get view details',
         operation_description='Get the details about a specific view in the data manager',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_STRING, in_=openapi.IN_PATH, description='View ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_STRING,
+                              in_=openapi.IN_PATH, description='View ID'),
         ],
     ),
 )
@@ -99,7 +101,8 @@ _view_request_body = openapi.Schema(
         operation_description='Overwrite view data with updated filters and other information for a specific project.',
         request_body=_view_request_body,
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_STRING, in_=openapi.IN_PATH, description='View ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_STRING,
+                              in_=openapi.IN_PATH, description='View ID'),
         ],
     ),
 )
@@ -113,7 +116,8 @@ _view_request_body = openapi.Schema(
         operation_summary='Update view',
         operation_description='Update view data with additional filters and other information for a specific project.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_STRING, in_=openapi.IN_PATH, description='View ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_STRING,
+                              in_=openapi.IN_PATH, description='View ID'),
         ],
         request_body=_view_request_body,
         responses={200: ViewSerializer},
@@ -129,7 +133,8 @@ _view_request_body = openapi.Schema(
         operation_summary='Delete view',
         operation_description='Delete a specific view by ID.',
         manual_parameters=[
-            openapi.Parameter(name='id', type=openapi.TYPE_STRING, in_=openapi.IN_PATH, description='View ID'),
+            openapi.Parameter(name='id', type=openapi.TYPE_STRING,
+                              in_=openapi.IN_PATH, description='View ID'),
         ],
     ),
 )
@@ -164,7 +169,8 @@ class ViewAPI(viewsets.ModelViewSet):
         project = generics.get_object_or_404(
             Project.objects.for_user(request.user), pk=serializer.validated_data['project'].id
         )
-        queryset = self.filter_queryset(self.get_queryset()).filter(project=project)
+        queryset = self.filter_queryset(
+            self.get_queryset()).filter(project=project)
         queryset.all().delete()
         return Response(status=204)
 
@@ -183,9 +189,11 @@ class ViewAPI(viewsets.ModelViewSet):
         project_id = serializer.validated_data['project']
         view_ids = serializer.validated_data['ids']
 
-        project = generics.get_object_or_404(Project.objects.for_user(request.user), pk=project_id)
+        project = generics.get_object_or_404(
+            Project.objects.for_user(request.user), pk=project_id)
 
-        queryset = self.filter_queryset(self.get_queryset()).filter(project=project)
+        queryset = self.filter_queryset(
+            self.get_queryset()).filter(project=project)
         views = list(queryset.filter(id__in=view_ids))
 
         # Update the order field for each view
@@ -215,13 +223,16 @@ class TaskPagination(PageNumberPagination):
         predictions_count_qs = Prediction.objects.filter(task_id__in=queryset)
         self.total_predictions = await sync_to_async(predictions_count_qs.count, thread_sensitive=True)()
 
-        annotations_count_qs = Annotation.objects.filter(task_id__in=queryset, was_cancelled=False)
+        annotations_count_qs = Annotation.objects.filter(
+            task_id__in=queryset, was_cancelled=False)
         self.total_annotations = await sync_to_async(annotations_count_qs.count, thread_sensitive=True)()
         return await sync_to_async(super().paginate_queryset, thread_sensitive=True)(queryset, request, view)
 
     def sync_paginate_queryset(self, queryset, request, view=None):
-        self.total_predictions = Prediction.objects.filter(task_id__in=queryset).count()
-        self.total_annotations = Annotation.objects.filter(task_id__in=queryset, was_cancelled=False).count()
+        self.total_predictions = Prediction.objects.filter(
+            task_id__in=queryset).count()
+        self.total_annotations = Annotation.objects.filter(
+            task_id__in=queryset, was_cancelled=False).count()
         return super().paginate_queryset(queryset, request, view)
 
     def paginate_queryset(self, queryset, request, view=None):
@@ -254,7 +265,8 @@ class TaskListAPI(generics.ListCreateAPIView):
 
     @staticmethod
     def get_task_serializer_context(request, project):
-        all_fields = request.GET.get('fields', None) == 'all'  # false by default
+        all_fields = request.GET.get(
+            'fields', None) == 'all'  # false by default
 
         return {
             'resolve_uri': bool_from_request(request.GET, 'resolve_uri', True),
@@ -280,13 +292,16 @@ class TaskListAPI(generics.ListCreateAPIView):
             'io_storages_localfilesimportstoragelink',
             'io_storages_redisimportstoragelink',
             'io_storages_s3importstoragelink',
+            'io_storages_aperturedbimportstoragelink',
             'file_upload',
         )
 
     def get(self, request):
         # get project
-        view_pk = int_from_request(request.GET, 'view', 0) or int_from_request(request.data, 'view', 0)
-        project_pk = int_from_request(request.GET, 'project', 0) or int_from_request(request.data, 'project', 0)
+        view_pk = int_from_request(request.GET, 'view', 0) or int_from_request(
+            request.data, 'view', 0)
+        project_pk = int_from_request(request.GET, 'project', 0) or int_from_request(
+            request.data, 'project', 0)
         if project_pk:
             project = generics.get_object_or_404(Project, pk=project_pk)
             self.check_object_permissions(request, project)
@@ -305,8 +320,10 @@ class TaskListAPI(generics.ListCreateAPIView):
         page = self.paginate_queryset(queryset)
 
         # get request params
-        all_fields = 'all' if request.GET.get('fields', None) == 'all' else None
-        fields_for_evaluation = get_fields_for_evaluation(prepare_params, request.user)
+        all_fields = 'all' if request.GET.get(
+            'fields', None) == 'all' else None
+        fields_for_evaluation = get_fields_for_evaluation(
+            prepare_params, request.user)
         review = bool_from_request(self.request.GET, 'review', False)
 
         if review:
@@ -334,7 +351,8 @@ class TaskListAPI(generics.ListCreateAPIView):
                 # people to retrieve manually instead on DM load, plus it
                 # will slow down initial DM load
                 # if project.retrieve_predictions_automatically is deprecated now and no longer used
-                tasks_for_predictions = Task.objects.filter(id__in=ids, predictions__isnull=True)
+                tasks_for_predictions = Task.objects.filter(
+                    id__in=ids, predictions__isnull=True)
                 evaluate_predictions(tasks_for_predictions)
                 [tasks_by_ids[_id].refresh_from_db() for _id in ids]
 
@@ -343,10 +361,12 @@ class TaskListAPI(generics.ListCreateAPIView):
                     page,
                     many=True,
                     context=context,
-                    include=get_fields_for_evaluation(prepare_params, request.user, skip_regular=False),
+                    include=get_fields_for_evaluation(
+                        prepare_params, request.user, skip_regular=False),
                 )
             else:
-                serializer = self.task_serializer_class(page, many=True, context=context)
+                serializer = self.task_serializer_class(
+                    page, many=True, context=context)
             return self.get_paginated_response(serializer.data)
         # all tasks
         if project.evaluate_predictions_automatically:
@@ -354,7 +374,8 @@ class TaskListAPI(generics.ListCreateAPIView):
         queryset = Task.prepared.annotate_queryset(
             queryset, fields_for_evaluation=fields_for_evaluation, all_fields=all_fields, request=request
         )
-        serializer = self.task_serializer_class(queryset, many=True, context=context)
+        serializer = self.task_serializer_class(
+            queryset, many=True, context=context)
         return Response(serializer.data)
 
 
@@ -436,7 +457,8 @@ class ProjectStateAPI(APIView):
     permission_required = all_permissions.projects_view
 
     def get(self, request):
-        pk = int_from_request(request.GET, 'project', 1)  # replace 1 to None, it's for debug only
+        # replace 1 to None, it's for debug only
+        pk = int_from_request(request.GET, 'project', 1)
         project = generics.get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
         data = ProjectSerializer(project).data
@@ -518,7 +540,8 @@ class ProjectStateAPI(APIView):
                 'selectedItems and ordering from the request body payload)',
             ),
         ],
-        responses={200: openapi.Response(description='Action performed successfully')},
+        responses={200: openapi.Response(
+            description='Action performed successfully')},
     ),
 )
 class ProjectActionsAPI(APIView):
@@ -528,7 +551,8 @@ class ProjectActionsAPI(APIView):
     )
 
     def get(self, request):
-        pk = int_from_request(request.GET, 'project', 1)  # replace 1 to None, it's for debug only
+        # replace 1 to None, it's for debug only
+        pk = int_from_request(request.GET, 'project', 1)
         project = generics.get_object_or_404(Project, pk=pk)
         self.check_object_permissions(request, project)
         return Response(get_all_actions(request.user, project))
@@ -543,12 +567,14 @@ class ProjectActionsAPI(APIView):
         # wrong action id
         action_id = request.GET.get('id', None)
         if action_id is None:
-            response = {'detail': 'No action id "' + str(action_id) + '", use ?id=<action-id>'}
+            response = {'detail': 'No action id "' +
+                        str(action_id) + '", use ?id=<action-id>'}
             return Response(response, status=422)
 
         # perform action and return the result dict
         kwargs = {'request': request}  # pass advanced params to actions
-        result = perform_action(action_id, project, queryset, request.user, **kwargs)
+        result = perform_action(
+            action_id, project, queryset, request.user, **kwargs)
         code = result.pop('response_code', 200)
 
         return Response(result, status=code)
