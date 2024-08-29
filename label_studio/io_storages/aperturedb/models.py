@@ -370,6 +370,44 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             img_id = re.split("key=", img_url)[-1]
 
         ann_id = str(annotation.id)
+
+        # Initial scan to see if bounding boxes already exist.
+        # This is necessary because some existing bounding boxes don't have LS_id set.
+        # Instead we rely on the LS id being the same as the _uniqueid.
+        query = [
+            {
+                "FindImage": {
+                    "blobs": False,
+                    "constraints": {"_uniqueid": ["==", img_id]},
+                    "_ref": 1,
+                }
+            },
+            {
+                "FindBoundingBox": {
+                    "blobs": False,
+                    "image_ref": 1,
+                    "results": {"list": ["LS_id", "_uniqueid"]},
+                }
+            }
+        ]
+        res, _ = db.query(query)
+        status = self._response_status(res)
+        if status != 0:
+            raise ValueError(
+                f"Error saving annotation data to ApertureDB : {db.get_last_response_str()}")
+        # Scan results to see if they exist or not, and which field to use as the id.
+        bbox_id_fields = {}
+        for bbx in res[1]["FindBoundingBox"]["entities"]:
+            if bbx["LS_id"] in bbox_map:
+                bbox_id_fields[bbx["LS_id"]] = "LS_id"
+            elif bbx["_uniqueid"] in bbox_map:
+                bbox_id_fields[bbx["_uniqueid"]] = "_uniqueid"
+
+        logger.debug(f"{img_id=}, {ann_id=}, {bbox_id_fields=}")
+
+        # TODO: Small race condition here. If a bounding box is added between the initial scan and the save, it will be missed.
+
+        # Now save the annotation
         query = [
             {
                 "FindImage": {
@@ -410,26 +448,34 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
         ]
 
         ref = 3
-        for id, bbox in bbox_map.items():
-            query.extend(
-                [
+        for id_, bbox in bbox_map.items():
+            if id_ in bbox_id_fields:  # Updated existing bounding box
+                id_field = bbox_id_fields[id_]
+                query.extend([
+                    {
+                        "UpdateBoundingBox": {
+                            "constraints": {id_field: ["==", id_]},
+                            "rectangle": bbox.rect,
+                            "label": bbox.labels[0] if len(bbox.labels) > 0 else "",
+                            "properties": {
+                                "LS_id": id_,  # Might not exist yet
+                                "LS_text": json.dumps(bbox.text),
+                                "LS_annotation": ann_id,
+                                "LS_label": json.dumps(bbox.labels),
+                            },
+                        }
+                    },
+                ])
+            else:
+                query.extend([
                     {
                         "AddBoundingBox": {
                             "image_ref": 1,
                             "_ref": ref,
                             "rectangle": bbox.rect,
-                            "properties": {"LS_id": id},
-                            "if_not_found": {
-                                "LS_id": ["==", id],
-                            },
-                        }
-                    },
-                    {
-                        "UpdateBoundingBox": {
-                            "ref": ref,
-                            "rectangle": bbox.rect,
                             "label": bbox.labels[0] if len(bbox.labels) > 0 else "",
                             "properties": {
+                                "LS_id": id_,
                                 "LS_text": json.dumps(bbox.text),
                                 "LS_annotation": ann_id,
                                 "LS_label": json.dumps(bbox.labels),
@@ -439,7 +485,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                     {"AddConnection": {"class": "LS_annotation_region",
                                        "src": 2, "dst": ref, "if_not_found": {}}},
                 ]
-            )
+                )
             ref += 1
 
         res, _ = db.query(query)
