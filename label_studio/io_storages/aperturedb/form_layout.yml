@@ -50,9 +50,10 @@ ImportStorage:
         description: ApertureDB constraints on bounding box predictions (see https://docs.aperturedata.io/query_language/Reference/shared_command_parameters/constraints)
       - type: number
         name: limit
-        label: Limit (optional)
+        label: Limit
         description: Maximum number of images to import
         min: 1
+        required: true
 
 ExportStorage:
   - columnCount: 3
