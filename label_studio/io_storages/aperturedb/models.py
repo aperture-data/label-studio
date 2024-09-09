@@ -27,7 +27,12 @@ logger = logging.getLogger(__name__)
 
 UID_REGEX = re.compile(r"^\d+\.\d+\.\d+$")
 DEFAULT_LIMIT = 1000
-
+# This flag is used to make predictions read-only
+# If set to True, predictions will not be editable in the UI
+# If set to False, predictions will be editable in the UI
+# The latter is a strange situation because predictions are shared 
+# between all client projects.
+PREDICTIONS_READONLY = True
 
 class ApertureDBStorageMixin(models.Model):
     hostname = models.TextField(
@@ -141,8 +146,10 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
             fe_result = res[0]["FindImage"]
             if fe_result["returned"] == 0:
                 return
-            for ent in fe_result["entities"]:
-                yield ent["_uniqueid"]
+            ids = [ent["_uniqueid"] for ent in fe_result["entities"]]
+            self._last_iterkeys = set(ids)
+            self._bbox_annotation_cache = {}
+            yield from ids
             offset += batch
 
     @staticmethod
@@ -169,6 +176,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                                 "height": 100 * bbx["_coordinates"]["height"] / height,
                                 "rectanglelabels": [bbx["_label"]],
                             },
+                            "readonly": PREDICTIONS_READONLY,
                         }
                         for bbx in bboxen
                     ]
@@ -179,6 +187,37 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         )
 
     def _get_bbox_annotations(self, key, project_id):
+        """ Get the bounding boxes and annotations for a single image
+
+        For performance reasons, we cache the results for the last batch of images returned by iterkeys.
+
+        Args:
+            key: The image key
+            project_id: The project id
+
+        Returns:
+            annotations 
+            predictions
+        """
+        if hasattr(self, "_bbox_annotation_cache") and key in self._bbox_annotation_cache:
+            logger.debug(
+                f"Using cached annotations for {key}")
+            return self._bbox_annotation_cache[key]
+
+        if hasattr(self, "_last_iterkeys") and key in self._last_iterkeys:
+            logger.debug(
+                f"Generating new annotation cache {len(self._last_iterkeys)} for {key}")
+            # replace cache with new batch
+            self._bbox_annotation_cache = {key: (
+                anns, preds) for key, anns, preds in self._get_bbox_annotations_batch(self._last_iterkeys, project_id)}
+            return self._bbox_annotation_cache[key]
+
+        # Bypass cache and query for a single image
+        logger.debug(f"Querying for single image {key}")
+        return next(self._get_bbox_annotations_batch([key], project_id))[1:]
+
+    def _get_bbox_annotations_batch(self, keys, project_id):
+        logger.debug(f"Getting annotations for {len(keys)} images")
         db = self.get_connection()
         query = [
             {
@@ -186,7 +225,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                     "blobs": False,
                     "_ref": 1,
                     "results": {"list": ["width", "height"]},
-                    "constraints": {"width": [">", 0], "height": [">", 0], "_uniqueid": ["==", key]},
+                    "uniqueids": True,
+                    "constraints": {"width": [">", 0], "height": [">", 0], "_uniqueid": ["in", list(keys)]},
                 }
             },
             {
@@ -195,6 +235,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                     "is_connected_to": {"ref": 1},
                     "constraints": {"LS_project_id": ["==", project_id]},
                     "results": {"list": ["LS_data"]},
+                    "group_by_source": True,
                 }
             },
         ]
@@ -215,28 +256,33 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                         | {
                             "LS_id": ["==", None],
                         },
+                        "group_by_source": True,
                     }
                 }
             )
 
         res, _ = db.query(query)
         status = self._response_status(res)
-        anns = []
-        preds = []
         if status != 0:
             raise ValueError(
                 f"Error retrieving ApertureDB image data : {db.get_last_response_str()}")
         if "entities" in res[0]["FindImage"]:
-            img = res[0]["FindImage"]["entities"][0] or {}
-            anns = res[1]["FindEntity"]["entities"] if res[1]["FindEntity"]["returned"] > 0 else []
-            anns = [json.loads(ann["LS_data"]) for ann in anns]
-            anns = [{"result": ann["result"]} for ann in anns]
+            for img in res[0]["FindImage"]["entities"]:
+                key = img["_uniqueid"]
 
-            if self.predictions:
-                bboxen = res[2]["FindBoundingBox"]["entities"] if res[2]["FindBoundingBox"]["returned"] > 0 else [
-                ]
-                preds = self._adb_to_rectanglelabels(img, bboxen)
-        return anns, preds
+                anns = res[1]["FindEntity"]["entities"].get(
+                    key, []) if res[1]["FindEntity"]["returned"] > 0 else []
+                anns = [json.loads(ann["LS_data"]) for ann in anns]
+                anns = [{"result": ann["result"]} for ann in anns]
+
+                if self.predictions:
+                    bboxen = res[2]["FindBoundingBox"]["entities"].get(
+                        key, []) if res[2]["FindBoundingBox"]["returned"] > 0 else []
+                    preds = self._adb_to_rectanglelabels(img, bboxen)
+                else:
+                    preds = []
+
+                yield key, anns, preds
 
     def get_data(self, key):
         data = {
@@ -458,7 +504,6 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                             "rectangle": bbox.rect,
                             "label": bbox.labels[0] if len(bbox.labels) > 0 else "",
                             "properties": {
-                                "LS_id": id_,  # Might not exist yet
                                 "LS_text": json.dumps(bbox.text),
                                 "LS_annotation": ann_id,
                                 "LS_label": json.dumps(bbox.labels),
