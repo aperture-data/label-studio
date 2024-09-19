@@ -146,7 +146,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
             fe_result = res[0]["FindImage"]
             if fe_result["returned"] == 0:
                 return
-            ids = [ent["_uniqueid"] for ent in fe_result["entities"]]
+            ids = [ent["_uniqueid"] for ent in fe_result["entities"]] if "entities" in fe_result else []
             self._last_iterkeys = set(ids)
             self._bbox_annotation_cache = {}
             yield from ids
@@ -443,11 +443,12 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                 f"Error saving annotation data to ApertureDB : {db.get_last_response_str()}")
         # Scan results to see if they exist or not, and which field to use as the id.
         bbox_id_fields = {}
-        for bbx in res[1]["FindBoundingBox"]["entities"]:
-            if bbx["LS_id"] in bbox_map:
-                bbox_id_fields[bbx["LS_id"]] = "LS_id"
-            elif bbx["_uniqueid"] in bbox_map:
-                bbox_id_fields[bbx["_uniqueid"]] = "_uniqueid"
+        if "entities" in res[1]["FindBoundingBox"]:
+            for bbx in res[1]["FindBoundingBox"]["entities"]:
+                if bbx["LS_id"] in bbox_map:
+                    bbox_id_fields[bbx["LS_id"]] = "LS_id"
+                elif bbx["_uniqueid"] in bbox_map:
+                    bbox_id_fields[bbx["_uniqueid"]] = "_uniqueid"
 
         logger.debug(f"{img_id=}, {ann_id=}, {bbox_id_fields=}")
 
