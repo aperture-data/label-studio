@@ -26,17 +26,17 @@ jobs:
       pull-requests: write
     steps:
 
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820  # Pinned to release v3.0.0
 
       - name: "Validate PR's title"
-        uses: thehanimo/pr-title-checker@v1.4.2
+        uses: thehanimo/pr-title-checker@1d8cd483a2b73118406a187f54dca8a9415f1375  # Pinned to release v1.4.2
         with:
           GITHUB_TOKEN: ${{ github.token }}
           pass_on_octokit_error: false
           configuration_path: ".github/pr-title-checker-config.json"
 
       - name: "Set PR's label based on title"
-        uses: release-drafter/release-drafter@v6.0.0
+        uses: release-drafter/release-drafter@805574fd5375e6902a5875239fb834f515c41111  # Pinned to release v6.0.0
         with:
           disable-releaser: true
           config-name: autolabeler.yml

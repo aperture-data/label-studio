@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820  # Pinned to release v3.0.0
 
       - name: Add Workflow link to command comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # Pinned to release v4
         with:
           token: ${{ secrets.GIT_PAT }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
@@ -64,7 +64,7 @@ jobs:
           type: ${{ github.event.client_payload.slash_command.args.unnamed.arg2 || 'task' }}
 
       - name: Add reaction to command comment on success
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # Pinned to release v4
         with:
           token: ${{ secrets.GIT_PAT }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
@@ -74,7 +74,7 @@ jobs:
           reactions: "+1"
 
       - name: Add reaction to command comment on failure
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # Pinned to release v4
         if: failure()
         with:
           token: ${{ secrets.GIT_PAT }}
@@ -91,7 +91,7 @@ jobs:
     timeout-minutes: 1
     steps:
       - name: Update comment
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # Pinned to release v4
         with:
           token: ${{ secrets.GIT_PAT }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
