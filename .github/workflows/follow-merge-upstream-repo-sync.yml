@@ -23,7 +23,7 @@ jobs:
       github.event.client_payload.event_action == 'merged'
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
 
       - name: Details
         id: details
@@ -181,7 +181,7 @@ jobs:
 
       - name: "Poetry: Set up"
         if: steps.details.outputs.poetry
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a
 
       - name: "Poetry: Commit and Push"
         if: steps.details.outputs.poetry
@@ -438,7 +438,7 @@ jobs:
       github.event.client_payload.event_action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
 
       - name: Get PR
         uses: actions/github-script@v7

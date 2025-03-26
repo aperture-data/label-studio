@@ -49,7 +49,7 @@ jobs:
       - promote_docker_image
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
 
       - name: Checkout Actions Hub
         uses: actions/checkout@v4
@@ -86,7 +86,7 @@ jobs:
     needs:
       - build-pypi
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
 
       - name: Delete Release Candidate Assets
         uses: actions/github-script@v7
@@ -121,7 +121,7 @@ jobs:
     needs:
       - build-pypi
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
 
       - name: DispatchEvent
         uses: actions/github-script@v7
@@ -165,7 +165,7 @@ jobs:
     steps:
       - name: Send Notification to Slack
         id: slack_notify_ops_release
-        uses: slackapi/slack-github-action@v1.26
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e
         with:
           channel-id: '${{ vars.SLACK_CH_RELEASE_TRAIN }}'
           slack-message: |

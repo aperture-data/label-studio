@@ -33,7 +33,7 @@ jobs:
       commit-message: ${{ steps.commit-details.outputs.commit-message }}
     timeout-minutes: 25
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
 
       - name: Checkout
         if: github.event_name == 'push'
@@ -41,7 +41,7 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: changes
         with:
           filters: |
@@ -222,7 +222,7 @@ jobs:
       id: ${{ steps.update-draft-release.outputs.id }}
       rc-version: ${{ steps.create-draft-release.outputs.rc-version }}
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
 
       - name: Checkout
         uses: actions/checkout@v4
