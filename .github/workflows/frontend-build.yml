@@ -53,7 +53,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
+      - uses: hmarr/debug-action@v3.0.0
 
       - name: Configure git
         shell: bash

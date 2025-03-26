@@ -31,7 +31,7 @@ jobs:
         shell: bash
 
     steps:
-      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820
+      - uses: hmarr/debug-action@v3.0.0
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,14 +40,14 @@ jobs:
           ref: ${{ inputs.head_sha }}
 
       - name: Setup Conda
-        uses: conda-incubator/setup-miniconda@a4260408e20b96e80095f42ff7f1a15b27dd94ca
+        uses: conda-incubator/setup-miniconda@v3.0.4
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           activate-environment: test-environment
 
       - name: Set up Poetry
-        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a
+        uses: snok/install-poetry@v1
 
       - name: Install Python dependencies
         run: |
