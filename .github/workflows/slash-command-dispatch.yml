@@ -22,10 +22,10 @@ jobs:
     timeout-minutes: 1
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/debug-action@v3.0.0
+      - uses: hmarr/debug-action@cd1afbd7852b7ad7b1b7a9a1b03efebd3b0a1820  # Pinned to release v3.0.0
 
       - name: "React to comment"
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # Pinned to release v4
         with:
           token: ${{ secrets.GIT_PAT }}
           comment-id: ${{ github.event.comment.id }}
@@ -49,7 +49,7 @@ jobs:
       - name: "Slash Command Dispatch"
         id: scd_issues
         if: steps.determine_command.outputs.command-state == 'known'
-        uses: peter-evans/slash-command-dispatch@v4
+        uses: peter-evans/slash-command-dispatch@13bc09769d122a64f75aa5037256f6f2d78be8c4  # Pinned to release v4
         with:
           token: ${{ secrets.GIT_PAT }}
           reaction-token: ${{ secrets.GIT_PAT }}
@@ -59,7 +59,7 @@ jobs:
 
       - name: "Edit comment with error message"
         if: steps.determine_command.outputs.command-state != 'known'
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # Pinned to release v4
         with:
           token: ${{ secrets.GIT_PAT }}
           comment-id: ${{ github.event.comment.id }}
