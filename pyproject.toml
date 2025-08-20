@@ -107,7 +107,7 @@ name ="label-studio"
 version = "1.13.2.dev0"
 description = "Label Studio annotation tool"
 authors = [
-    { "name" = "Heartex ", email = "<hello@heartex.ai>" }
+    { name = "Heartex", email = "<hello@heartex.ai>" }
 ]
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
