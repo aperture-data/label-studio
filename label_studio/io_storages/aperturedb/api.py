@@ -19,6 +19,7 @@ from io_storages.api import (
 )
 from io_storages.aperturedb.models import ApertureDBExportStorage, ApertureDBImportStorage
 from io_storages.aperturedb.serializers import ApertureDBExportStorageSerializer, ApertureDBImportStorageSerializer
+from io_storages.aperturedb.models import DEFAULT_LIMIT
 
 
 logger = logging.getLogger(__name__)
@@ -192,6 +193,10 @@ class ApertureDBImportStorageFormLayoutAPI(ImportStorageFormLayoutAPI):
                     filter(lambda field: field['name'] not in to_remove,
                         form_layout['ImportStorage'][0]['fields']))
             form_layout['ImportStorage'][0]['columnCount'] = '1'
+            for f in form_layout['ImportStorage'][1]['fields']:
+                if f['name'] == "limit":
+                    f['value'] = DEFAULT_LIMIT
+
 
         return form_layout
 

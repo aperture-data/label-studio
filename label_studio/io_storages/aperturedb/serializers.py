@@ -40,6 +40,8 @@ class ApertureDBImportStorageSerializer(ImportStorageSerializer):
             data['password']=''
             data['token']=''
             data['use_ssl']=True
+        else:
+            data['aperturedb_key']=''
         logger.error("Ok, ready to validate after")
         data = super(ApertureDBImportStorageSerializer, self).validate(data)
         logger.error("Main validate ok")
@@ -77,6 +79,16 @@ class ApertureDBExportStorageSerializer(ExportStorageSerializer):
         return result
 
     def validate(self, data):
+        if settings.APERTUREDB_KEY is not None:
+            data['aperturedb_key'] = settings.APERTUREDB_KEY
+            data['hostname']=''
+            data['port']=0
+            data['username']=''
+            data['password']=''
+            data['token']=''
+            data['use_ssl']=True
+        else:
+            data['aperturedb_key']=''
         data = super(ApertureDBExportStorageSerializer, self).validate(data)
         storage = self.instance
         if storage:
