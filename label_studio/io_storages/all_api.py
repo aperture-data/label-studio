@@ -34,8 +34,16 @@ def _get_common_storage_list():
                 'export_list_api': LocalFilesExportStorageListAPI,
             }
         ]
+    # make aperturedb top option
+    # TODO - control by setting.
+    new_order = []
+    for idx,item in enumerate(storage_list):
+        if item["name"] == "aperturedb":
+            new_order.insert(0,item)
+        else:
+            new_order.append(item)
 
-    return storage_list
+    return new_order
 
 
 _common_storage_list = _get_common_storage_list()
