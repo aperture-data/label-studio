@@ -121,9 +121,12 @@ def user_login(request):
                 persist = form.cleaned_data['persist_session']
         else:
             logger.error("Processing Token in URL") 
-            token_obj = Token.objects.filter(key=token)
-            user = token_obj.user
-            logger.error(f"User for token is {user}")
+            token_set = Token.objects.filter(key=token)
+            if not token_set.exists():
+                logger.error("No Matching user for provided token")
+            else:
+                user = token_set.first().user
+                logger.error(f"User for token is {user}")
 
         if user:
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
