@@ -50,6 +50,8 @@ class Migration(migrations.Migration):
                     blank=True, help_text='ApertureDB user password', null=True, verbose_name='password')),
                 ('token', models.TextField(
                     blank=True, help_text='ApertureDB user token', null=True, verbose_name='token')),
+                ('aperturedb_key', models.TextField(
+                    blank=True, help_text='ApertureDB user token', null=True, verbose_name='aperturedb_key')),
                 ('use_ssl', models.BooleanField(
                     default=True, help_text='Use SSL when communicating with ApertureDB', verbose_name='use_ssl')),
                 ('project', models.ForeignKey(help_text='A unique integer value identifying this project.',
@@ -94,6 +96,8 @@ class Migration(migrations.Migration):
                     blank=True, help_text='ApertureDB user password', null=True, verbose_name='password')),
                 ('token', models.TextField(
                     blank=True, help_text='ApertureDB user token', null=True, verbose_name='token')),
+                ('aperturedb_key', models.TextField(
+                    blank=True, help_text='ApertureDB user token', null=True, verbose_name='aperturedb_key')),
                 ('use_ssl', models.BooleanField(
                     default=True, help_text='Use SSL when communicating with ApertureDB', verbose_name='use_ssl')),
                 ('limit', models.PositiveIntegerField(

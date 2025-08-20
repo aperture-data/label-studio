@@ -2,10 +2,14 @@
 """
 import os
 
+import logging
+from django.conf import settings
 from io_storages.aperturedb.models import ApertureDBExportStorage, ApertureDBImportStorage, ApertureDBStorageMixin
 from io_storages.serializers import ExportStorageSerializer, ImportStorageSerializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
 
 class ApertureDBImportStorageSerializer(ImportStorageSerializer):
     type = serializers.ReadOnlyField(default=os.path.basename(os.path.dirname(__file__)))
@@ -21,18 +25,38 @@ class ApertureDBImportStorageSerializer(ImportStorageSerializer):
         return result
 
     def validate(self, data):
+        logger.error(f"In Validate for ApertureDBImport: {data}!")
+        # in theory this would be better handled somewhere else, perhaps.
+        # but this is the entrypoint for the data from the ui, and we don't
+        #  return host/port/etc when we have key as a setting
+        # already attempted to have ApertureDBImportStorage change what fields
+        # it has, but if that's actually the model stored in the db, probably
+        # want that to be consistant.
+        if settings.APERTUREDB_KEY is not None:
+            data['aperturedb_key'] = settings.APERTUREDB_KEY
+            data['hostname']=''
+            data['port']=0
+            data['username']=''
+            data['password']=''
+            data['token']=''
+            data['use_ssl']=True
+        logger.error("Ok, ready to validate after")
         data = super(ApertureDBImportStorageSerializer, self).validate(data)
+        logger.error("Main validate ok")
         storage = self.instance
         if storage:
+            logger.error("Storage is instance")
             for key, value in data.items():
                 setattr(storage, key, value)
         else:
+            logger.error("creating Storage")
             if 'id' in self.initial_data:
                 storage_object = self.Meta.model.objects.get(id=self.initial_data['id'])
                 for attr in ApertureDBStorageMixin.secure_fields:
                     data[attr] = data.get(attr) or getattr(storage_object, attr)
             storage = self.Meta.model(**data)
         try:
+            logger.error("Ok, ready to validate connection")
             storage.validate_connection()
         except Exception as exc:
             raise ValidationError(exc)

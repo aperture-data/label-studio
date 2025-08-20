@@ -185,21 +185,24 @@ class ApertureDBExportStorageSyncAPI(ExportStorageSyncAPI):
 
 class ApertureDBImportStorageFormLayoutAPI(ImportStorageFormLayoutAPI):
     def post_process_form(self, form_layout):
-        logging.error(f"Post Process Import for {form_layout}")
         if settings.APERTUREDB_KEY is not None:
-            logging.error("We have a key")
+            logging.info("Removing host configuration from Import Storage; key configured in environment")
             to_remove = [ 'hostname','username','port','password','token' ]
             form_layout['ImportStorage'][0]['fields'] = list(
                     filter(lambda field: field['name'] not in to_remove,
                         form_layout['ImportStorage'][0]['fields']))
             form_layout['ImportStorage'][0]['columnCount'] = '1'
-            logging.error(f"Post Post (see what I did there?) Process Import for {form_layout}")
-        else:
-            logging.error("No key")
 
         return form_layout
 
 
 class ApertureDBExportStorageFormLayoutAPI(ExportStorageFormLayoutAPI):
     def post_process_form(self, form_layout):
+        if settings.APERTUREDB_KEY is not None:
+            logging.info("Removing host configuration from Export Storage; key configured in environment")
+            to_remove = [ 'hostname','username','port','password','token' ]
+            form_layout['ExportStorage'][0]['fields'] = list(
+                    filter(lambda field: field['name'] not in to_remove,
+                        form_layout['ImportStorage'][0]['fields']))
+            form_layout['ExportStorage'][0]['columnCount'] = '1'
         return form_layout

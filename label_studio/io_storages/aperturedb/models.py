@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 import re
+from traceback import print_exception
 
 from django.conf import settings
 from django.db import models
@@ -35,6 +36,8 @@ DEFAULT_LIMIT = 1000
 PREDICTIONS_READONLY = True
 
 class ApertureDBStorageMixin(models.Model):
+    _db_lock = threading.Lock()
+    _db = None
     hostname = models.TextField(
         _("hostname"), null=True, blank=True, help_text="ApertureDB host name")
     port = models.PositiveIntegerField(
@@ -47,10 +50,11 @@ class ApertureDBStorageMixin(models.Model):
                              blank=True, help_text="ApertureDB user token")
     use_ssl = models.BooleanField(
         _("use_ssl"), default=True, help_text="Use SSL when communicating with ApertureDB")
-    _db_lock = threading.Lock()
-    _db = None
 
-    secure_fields = ["password", "token"]
+    aperturedb_key = models.TextField(_("aperturedb_key"), null=True,blank=True,
+            help_text="ApertureDB Key for configuring Access")
+
+    secure_fields = ["password", "token","aperturedb_key"]
 
     def _response_status(self, response):
         if isinstance(response, list):
@@ -65,6 +69,7 @@ class ApertureDBStorageMixin(models.Model):
         if self._db is None:
             with self._db_lock:
                 if self._db is None:
+                    logger.error(f"Key in get_connection is {self.aperturedb_key}")
                     self._db = Connector.Connector(
                         str(self.hostname),
                         self.port,
@@ -72,15 +77,23 @@ class ApertureDBStorageMixin(models.Model):
                         password=str(self.password) if self.password else "",
                         token=str(self.token) if self.token else "",
                         use_ssl=self.use_ssl,
+                        key=str(self.aperturedb_key) if self.aperturedb_key else None
                     )
+                    # bug in key connector
+                    self._db.use_keepalive = True
         return self._db
 
     def validate_connection(self, client=None):
-        db = self.get_connection()
-        res, _ = db.query([{"GetStatus": {}}])
-        if self._response_status(res) != 0:
-            raise ValueError(
-                f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
+        try:
+            db = self.get_connection()
+            res, _ = db.query([{"GetStatus": {}}])
+            if self._response_status(res) != 0:
+                raise ValueError(
+                    f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
+        except Exception as e:
+            print_exception(e)
+            logging.error(f"Failed {e}")
+            raise e
 
     class Meta:
         abstract = True
