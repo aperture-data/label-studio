@@ -1,5 +1,7 @@
 """This file and its contents are licensed under the Apache License 2.0. Please see the included NOTICE for copyright information and LICENSE for a copy of the license.
 """
+import logging
+from django.conf import settings
 from django.utils.decorators import method_decorator
 from drf_yasg import openapi as openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -19,6 +21,7 @@ from io_storages.aperturedb.models import ApertureDBExportStorage, ApertureDBImp
 from io_storages.aperturedb.serializers import ApertureDBExportStorageSerializer, ApertureDBImportStorageSerializer
 
 
+logger = logging.getLogger(__name__)
 @method_decorator(
     name='get',
     decorator=swagger_auto_schema(
@@ -181,8 +184,22 @@ class ApertureDBExportStorageSyncAPI(ExportStorageSyncAPI):
 
 
 class ApertureDBImportStorageFormLayoutAPI(ImportStorageFormLayoutAPI):
-    pass
+    def post_process_form(self, form_layout):
+        logging.error(f"Post Process Import for {form_layout}")
+        if settings.APERTUREDB_KEY is not None:
+            logging.error("We have a key")
+            to_remove = [ 'hostname','username','port','password','token' ]
+            form_layout['ImportStorage'][0]['fields'] = list(
+                    filter(lambda field: field['name'] not in to_remove,
+                        form_layout['ImportStorage'][0]['fields']))
+            form_layout['ImportStorage'][0]['columnCount'] = '1'
+            logging.error(f"Post Post (see what I did there?) Process Import for {form_layout}")
+        else:
+            logging.error("No key")
+
+        return form_layout
 
 
 class ApertureDBExportStorageFormLayoutAPI(ExportStorageFormLayoutAPI):
-    pass
+    def post_process_form(self, form_layout):
+        return form_layout
