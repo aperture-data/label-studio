@@ -19,6 +19,7 @@ from io_storages.base_models import (
     ImportStorageLink,
     ProjectStorageMixin,
 )
+from io_storages.aperturedb.extensions import append_to_save_annotation, append_to_save_bbox,extension_iface
 from tasks.models import Annotation
 
 from aperturedb import Connector
@@ -406,6 +407,7 @@ class AnnotationBBox:
 
 class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
     def save_annotation(self, annotation):
+        logger.error("ADES:save_annotation")
         db = self.get_connection()
         logger.debug(
             f"Creating new object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")
@@ -507,14 +509,23 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             },
         ]
 
-        ref = 3
+        ctx = extension_iface(ref=2,object_ref=2,object_id=str(ann_id))
+        # XXX add linkage for connection here
+        query.extend( append_to_save_annotation( ctx ))
+        
+
+        ref = ctx.ref+1
         for id_, bbox in bbox_map.items():
             if id_ in bbox_id_fields:  # Updated existing bounding box
                 id_field = bbox_id_fields[id_]
                 query.extend([
-                    {
-                        "UpdateBoundingBox": {
+                    { "FindBoundingBox": {
+                            "_ref":ref,
                             "constraints": {id_field: ["==", id_]},
+                            }
+                    }, {
+                        "UpdateBoundingBox": {
+                            "ref":ref,
                             "rectangle": bbox.rect,
                             "label": bbox.labels[0] if len(bbox.labels) > 0 else "",
                             "properties": {
@@ -545,7 +556,12 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                                        "src": 2, "dst": ref, "if_not_found": {}}},
                 ]
                 )
-            ref += 1
+
+            ctx.ref = ref
+            ctx.object_ref = ref
+            ctx.object_id = str(ann_id) + "_" +  str(id_)
+            query.extend(append_to_save_bbox(ctx))
+            ref = ctx.ref + 1
 
         res, _ = db.query(query)
         status = self._response_status(res)
