@@ -104,14 +104,11 @@ def user_login(request):
     login_form = load_func(settings.USER_LOGIN_FORM)
     form = login_form()
 
-    logger.error("In Login Page")
-
 
     if user.is_authenticated:
         return redirect(next_page)
 
     if request.method == 'POST' or token:
-        logger.error("Processing Login Data")
         user = None
         persist = True
         if not token:
@@ -120,13 +117,13 @@ def user_login(request):
                 user = form.cleaned_data['user']
                 persist = form.cleaned_data['persist_session']
         else:
-            logger.error("Processing Token in URL") 
+            logger.info("Logging a user in with a token")
             token_set = Token.objects.filter(key=token)
             if not token_set.exists():
-                logger.error("No Matching user for provided token")
+                logger.error("No matching user for provided token during login")
             else:
                 user = token_set.first().user
-                logger.error(f"User for token is {user}")
+                logger.info(f"Matched user for token is {user}")
 
         if user:
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')

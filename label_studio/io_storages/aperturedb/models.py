@@ -99,7 +99,7 @@ class ApertureDBStorageMixin(models.Model):
                     f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
         except Exception as e:
             print_exception(e)
-            logging.error(f"Failed {e}")
+            logging.error(f"Validate ApertureDB Connection Failed: {e}")
             raise e
 
     class Meta:
@@ -413,7 +413,6 @@ class AnnotationBBox:
 
 class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
     def save_annotation(self, annotation):
-        logger.error("ADES:save_annotation")
         db = self.get_connection()
         logger.debug(
             f"Creating new object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")

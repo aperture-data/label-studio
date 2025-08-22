@@ -25,7 +25,8 @@ class ApertureDBImportStorageSerializer(ImportStorageSerializer):
         return result
 
     def validate(self, data):
-        logger.error(f"In Validate for ApertureDBImport: {data}!")
+        # caution - may put sensitive info in log.
+        logger.debug(f"In Validate for ApertureDBImport: {data}!")
         # in theory this would be better handled somewhere else, perhaps.
         # but this is the entrypoint for the data from the ui, and we don't
         #  return host/port/etc when we have key as a setting
@@ -42,23 +43,18 @@ class ApertureDBImportStorageSerializer(ImportStorageSerializer):
             data['use_ssl']=True
         else:
             data['aperturedb_key']=''
-        logger.error("Ok, ready to validate after")
         data = super(ApertureDBImportStorageSerializer, self).validate(data)
-        logger.error("Main validate ok")
         storage = self.instance
         if storage:
-            logger.error("Storage is instance")
             for key, value in data.items():
                 setattr(storage, key, value)
         else:
-            logger.error("creating Storage")
             if 'id' in self.initial_data:
                 storage_object = self.Meta.model.objects.get(id=self.initial_data['id'])
                 for attr in ApertureDBStorageMixin.secure_fields:
                     data[attr] = data.get(attr) or getattr(storage_object, attr)
             storage = self.Meta.model(**data)
         try:
-            logger.error("Ok, ready to validate connection")
             storage.validate_connection()
         except Exception as exc:
             raise ValidationError(exc)
