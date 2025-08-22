@@ -60,6 +60,10 @@ exec_or_wrap_n_exec() {
 
 source_inject_envvars
 
+if ["$0" = "$BASH_SOURCE" ]; then
+    echo "Sourced"
+else
+
 if [ -f "$OPT_DIR"/config_env ]; then
   echo >&3 "$0: Remove config_env"
   rm -f "$OPT_DIR"/config_env
@@ -78,4 +82,6 @@ elif [ "$1" = "label-studio-migrate" ]; then
   exec python3 /label-studio/label_studio/manage.py locked_migrate >&3
 else
   exec_or_wrap_n_exec "$@"
+fi
+
 fi

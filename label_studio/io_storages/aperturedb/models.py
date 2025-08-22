@@ -19,7 +19,13 @@ from io_storages.base_models import (
     ImportStorageLink,
     ProjectStorageMixin,
 )
-from io_storages.aperturedb.extensions import append_to_save_annotation, append_to_save_bbox,extension_iface
+from io_storages.aperturedb.extensions import (
+        append_to_save_annotation,
+        append_to_save_bbox,
+        modify_annotation_add_props,
+        modify_bbox_add_props,
+        extension_iface
+)
 from tasks.models import Annotation
 
 from aperturedb import Connector
@@ -509,8 +515,9 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             },
         ]
 
+
         ctx = extension_iface(ref=2,object_ref=2,object_id=str(ann_id))
-        # XXX add linkage for connection here
+        query[1]["AddEntity"]["properties"] = modify_annotation_add_props( query[1]["AddEntity"]["properties"], ctx)
         query.extend( append_to_save_annotation( ctx ))
         
 
@@ -537,7 +544,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                     },
                 ])
             else:
-                query.extend([
+                bbox_query = [
                     {
                         "AddBoundingBox": {
                             "image_ref": 1,
@@ -555,7 +562,9 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                     {"AddConnection": {"class": "LS_annotation_region",
                                        "src": 2, "dst": ref, "if_not_found": {}}},
                 ]
-                )
+                bbox_query[0]["AddBoundingBox"]["properties"] = \
+                    modify_bbox_add_props( bbox_query[0]["AddBoundingBox"]["properties"],ctx)
+                query.extend( bbox_query )
 
             ctx.ref = ref
             ctx.object_ref = ref
