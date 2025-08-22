@@ -95,6 +95,7 @@ def user_login(request):
     """Login page"""
     user = request.user
     next_page = request.GET.get('next')
+    token = request.GET.get('token')
 
     # checks if the URL is a safe redirection.
     if not next_page or not url_has_allowed_host_and_scheme(url=next_page, allowed_hosts=request.get_host()):
@@ -103,15 +104,30 @@ def user_login(request):
     login_form = load_func(settings.USER_LOGIN_FORM)
     form = login_form()
 
+
     if user.is_authenticated:
         return redirect(next_page)
 
-    if request.method == 'POST':
-        form = login_form(request.POST)
-        if form.is_valid():
-            user = form.cleaned_data['user']
+    if request.method == 'POST' or token:
+        user = None
+        persist = True
+        if not token:
+            form = login_form(request.POST)
+            if form.is_valid():
+                user = form.cleaned_data['user']
+                persist = form.cleaned_data['persist_session']
+        else:
+            logger.info("Logging a user in with a token")
+            token_set = Token.objects.filter(key=token)
+            if not token_set.exists():
+                logger.error("No matching user for provided token during login")
+            else:
+                user = token_set.first().user
+                logger.info(f"Matched user for token is {user}")
+
+        if user:
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-            if form.cleaned_data['persist_session'] is not True:
+            if persist is not True: 
                 # Set the session to expire when the browser is closed
                 request.session['keep_me_logged_in'] = False
                 request.session.set_expiry(0)

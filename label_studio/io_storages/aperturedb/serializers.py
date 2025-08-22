@@ -2,10 +2,14 @@
 """
 import os
 
+import logging
+from django.conf import settings
 from io_storages.aperturedb.models import ApertureDBExportStorage, ApertureDBImportStorage, ApertureDBStorageMixin
 from io_storages.serializers import ExportStorageSerializer, ImportStorageSerializer
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
 
 class ApertureDBImportStorageSerializer(ImportStorageSerializer):
     type = serializers.ReadOnlyField(default=os.path.basename(os.path.dirname(__file__)))
@@ -21,6 +25,24 @@ class ApertureDBImportStorageSerializer(ImportStorageSerializer):
         return result
 
     def validate(self, data):
+        # caution - may put sensitive info in log.
+        logger.debug(f"In Validate for ApertureDBImport: {data}!")
+        # in theory this would be better handled somewhere else, perhaps.
+        # but this is the entrypoint for the data from the ui, and we don't
+        #  return host/port/etc when we have key as a setting
+        # already attempted to have ApertureDBImportStorage change what fields
+        # it has, but if that's actually the model stored in the db, probably
+        # want that to be consistant.
+        if settings.APERTUREDB_KEY is not None:
+            data['aperturedb_key'] = settings.APERTUREDB_KEY
+            data['hostname']=''
+            data['port']=0
+            data['username']=''
+            data['password']=''
+            data['token']=''
+            data['use_ssl']=True
+        else:
+            data['aperturedb_key']=''
         data = super(ApertureDBImportStorageSerializer, self).validate(data)
         storage = self.instance
         if storage:
@@ -53,6 +75,16 @@ class ApertureDBExportStorageSerializer(ExportStorageSerializer):
         return result
 
     def validate(self, data):
+        if settings.APERTUREDB_KEY is not None:
+            data['aperturedb_key'] = settings.APERTUREDB_KEY
+            data['hostname']=''
+            data['port']=0
+            data['username']=''
+            data['password']=''
+            data['token']=''
+            data['use_ssl']=True
+        else:
+            data['aperturedb_key']=''
         data = super(ApertureDBExportStorageSerializer, self).validate(data)
         storage = self.instance
         if storage:

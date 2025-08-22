@@ -34,8 +34,21 @@ def _get_common_storage_list():
                 'export_list_api': LocalFilesExportStorageListAPI,
             }
         ]
+    if settings.CONFIGURED_STORAGE_BACKENDS:
+        logging.info(f"Have configured storage backends: {settings.CONFIGURED_STORAGE_BACKENDS}")
+        new_order = []
+        storage_names = list(map( lambda s: s['name'], storage_list ))
+        for backend in settings.CONFIGURED_STORAGE_BACKENDS.split():
+            if not backend in storage_names:
+                logger.error(f"Cannot add backend {backend}, not in list of available storages.")
+                continue
+            new_order.append( storage_list[ storage_names.index(backend) ] )
 
-    return storage_list
+    else:
+        logging.warning("No configured storage backends, using defaults")
+        new_order = storage_list
+
+    return new_order
 
 
 _common_storage_list = _get_common_storage_list()

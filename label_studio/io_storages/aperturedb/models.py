@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 import re
+from traceback import print_exception
 
 from django.conf import settings
 from django.db import models
@@ -17,6 +18,13 @@ from io_storages.base_models import (
     ImportStorage,
     ImportStorageLink,
     ProjectStorageMixin,
+)
+from io_storages.aperturedb.extensions import (
+        append_to_save_annotation,
+        append_to_save_bbox,
+        modify_annotation_add_props,
+        modify_bbox_add_props,
+        extension_iface
 )
 from tasks.models import Annotation
 
@@ -35,6 +43,8 @@ DEFAULT_LIMIT = 1000
 PREDICTIONS_READONLY = True
 
 class ApertureDBStorageMixin(models.Model):
+    _db_lock = threading.Lock()
+    _db = None
     hostname = models.TextField(
         _("hostname"), null=True, blank=True, help_text="ApertureDB host name")
     port = models.PositiveIntegerField(
@@ -47,10 +57,11 @@ class ApertureDBStorageMixin(models.Model):
                              blank=True, help_text="ApertureDB user token")
     use_ssl = models.BooleanField(
         _("use_ssl"), default=True, help_text="Use SSL when communicating with ApertureDB")
-    _db_lock = threading.Lock()
-    _db = None
 
-    secure_fields = ["password", "token"]
+    aperturedb_key = models.TextField(_("aperturedb_key"), null=True,blank=True,
+            help_text="ApertureDB Key for configuring Access")
+
+    secure_fields = ["password", "token","aperturedb_key"]
 
     def _response_status(self, response):
         if isinstance(response, list):
@@ -65,6 +76,7 @@ class ApertureDBStorageMixin(models.Model):
         if self._db is None:
             with self._db_lock:
                 if self._db is None:
+                    logger.error(f"Key in get_connection is {self.aperturedb_key}")
                     self._db = Connector.Connector(
                         str(self.hostname),
                         self.port,
@@ -72,15 +84,23 @@ class ApertureDBStorageMixin(models.Model):
                         password=str(self.password) if self.password else "",
                         token=str(self.token) if self.token else "",
                         use_ssl=self.use_ssl,
+                        key=str(self.aperturedb_key) if self.aperturedb_key else None
                     )
+                    # bug in key connector
+                    self._db.use_keepalive = True
         return self._db
 
     def validate_connection(self, client=None):
-        db = self.get_connection()
-        res, _ = db.query([{"GetStatus": {}}])
-        if self._response_status(res) != 0:
-            raise ValueError(
-                f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
+        try:
+            db = self.get_connection()
+            res, _ = db.query([{"GetStatus": {}}])
+            if self._response_status(res) != 0:
+                raise ValueError(
+                    f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
+        except Exception as e:
+            print_exception(e)
+            logging.error(f"Validate ApertureDB Connection Failed: {e}")
+            raise e
 
     class Meta:
         abstract = True
@@ -494,14 +514,24 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             },
         ]
 
-        ref = 3
+
+        ctx = extension_iface(ref=2,object_ref=2,object_id=str(ann_id))
+        query[1]["AddEntity"]["properties"] = modify_annotation_add_props( query[1]["AddEntity"]["properties"], ctx)
+        query.extend( append_to_save_annotation( ctx ))
+        
+
+        ref = ctx.ref+1
         for id_, bbox in bbox_map.items():
             if id_ in bbox_id_fields:  # Updated existing bounding box
                 id_field = bbox_id_fields[id_]
                 query.extend([
-                    {
-                        "UpdateBoundingBox": {
+                    { "FindBoundingBox": {
+                            "_ref":ref,
                             "constraints": {id_field: ["==", id_]},
+                            }
+                    }, {
+                        "UpdateBoundingBox": {
+                            "ref":ref,
                             "rectangle": bbox.rect,
                             "label": bbox.labels[0] if len(bbox.labels) > 0 else "",
                             "properties": {
@@ -513,7 +543,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                     },
                 ])
             else:
-                query.extend([
+                bbox_query = [
                     {
                         "AddBoundingBox": {
                             "image_ref": 1,
@@ -531,8 +561,15 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                     {"AddConnection": {"class": "LS_annotation_region",
                                        "src": 2, "dst": ref, "if_not_found": {}}},
                 ]
-                )
-            ref += 1
+                bbox_query[0]["AddBoundingBox"]["properties"] = \
+                    modify_bbox_add_props( bbox_query[0]["AddBoundingBox"]["properties"],ctx)
+                query.extend( bbox_query )
+
+            ctx.ref = ref
+            ctx.object_ref = ref
+            ctx.object_id = str(ann_id) + "_" +  str(id_)
+            query.extend(append_to_save_bbox(ctx))
+            ref = ctx.ref + 1
 
         res, _ = db.query(query)
         status = self._response_status(res)

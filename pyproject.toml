@@ -53,8 +53,9 @@ line-length = 119
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-# Assume Python 3.8 at a minimum
-target-version = "py38"
+# Assume Python 3.9 at a minimum
+# changed to 3.9 from 3.8 to fix building sdk because of poetry update I assume.
+target-version = "py39"
 
 [tool.ruff.per-file-ignores]
 # Ignore deleting imports in __init__.py files as they're actually being used.
@@ -101,22 +102,28 @@ force-exclude = '''
 
 target-version = ['py38']
 
-[tool.poetry]
-
-name = "label-studio"
+[project]
+name ="label-studio"
 version = "1.13.2.dev0"
 description = "Label Studio annotation tool"
 authors = [
-    "Heartex <hello@heartex.ai>",
+    { name = "Heartex", email = "<hello@heartex.ai>" }
 ]
-readme = "README.md"
-license = "Apache-2.0"
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
 ]
-homepage = "https://github.com/heartexlabs/label-studio"
+readme = "README.md"
+license = "Apache-2.0"
+[project.urls]
+homepage ="https://github.com/heartexlabs/label-studio"
+
+[project.scripts]
+label-studio = "label_studio.server:main"
+
+[tool.poetry]
+
 packages = [
     { include = "label_studio" },
 ]
@@ -139,11 +146,9 @@ exclude = [
 ]
 
 
-[tool.poetry.scripts]
-label-studio = "label_studio.server:main"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4"
+python = ">=3.9,<4"
 wheel = "<=0.40.0,>=0.38.1"
 appdirs = ">=1.4.3"
 attr = "0.3.1"
@@ -196,7 +201,7 @@ launchdarkly-server-sdk = "8.2.1"
 python-json-logger = "2.0.4"
 google-cloud-storage = "^2.13.0"
 google-cloud-logging = "^3.10.0"
-aperturedb = ">=0.4.15"
+aperturedb = ">=0.4.49"
 python-magic = ">=0.4.27"
 mysqlclient = {version = "*", optional = true}
 django-csp = "3.7"
@@ -204,7 +209,7 @@ openai = "^1.10.0"
 
 # Humansignal repo dependencies
 
-label-studio-sdk = {url = "https://github.com/HumanSignal/label-studio-sdk/archive/0baa5f76ba3881d80ae723d6382c82d1a25220a7.zip"}
+label-studio-sdk = {url = "https://github.com/HumanSignal/label-studio-sdk/archive/refs/tags/1.0.10.zip" }
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.2.2"

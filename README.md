@@ -1,3 +1,10 @@
+## ApertureData's Label Studio Fork
+
+This is a fork of label studio which adds ApertureDB as a backend.
+
+Please look [here](./ApertureData-Modifications.md) for our changes and how to
+use it.
+
 <img src="https://user-images.githubusercontent.com/12534576/192582340-4c9e4401-1fe6-4dbb-95bb-fdbba5493f61.png"/>
 
 ![GitHub](https://img.shields.io/github/license/heartexlabs/label-studio?logo=heartex) ![label-studio:build](https://github.com/heartexlabs/label-studio/workflows/label-studio:build/badge.svg) ![GitHub release](https://img.shields.io/github/v/release/heartexlabs/label-studio?include_prereleases)

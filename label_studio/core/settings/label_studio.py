@@ -65,3 +65,7 @@ except IOError:
     FEATURE_FLAGS_FROM_FILE = False
 
 STORAGE_PERSISTENCE = get_bool_env('STORAGE_PERSISTENCE', True)
+
+CONFIGURED_STORAGE_BACKENDS = get_env("CONFIGURED_STORAGE_BACKENDS",None)
+
+from label_studio.io_storages.aperturedb.app_settings import *
