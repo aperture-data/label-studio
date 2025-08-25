@@ -19,6 +19,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 from label_studio.core.utils.params import get_bool_env, get_env_list
 
+logging.getLogger('faker').setLevel(logging.ERROR)
+
 formatter = 'standard'
 JSON_LOG = get_bool_env('JSON_LOG', False)
 if JSON_LOG:
@@ -394,7 +396,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
-STATIC_URL = '/static/'
+STATIC_URL = get_env( 'STATIC_PATH', '/static/' )
 # if FORCE_SCRIPT_NAME:
 #    STATIC_URL = FORCE_SCRIPT_NAME + STATIC_URL
 logger.info(f'=> Static URL is set to: {STATIC_URL}')

@@ -9,6 +9,10 @@ import pathlib
 import socket
 import sys
 
+import faker
+
+logging.getLogger('faker').setLevel(logging.ERROR)
+
 from colorama import Fore, init
 
 if sys.platform == 'win32':
