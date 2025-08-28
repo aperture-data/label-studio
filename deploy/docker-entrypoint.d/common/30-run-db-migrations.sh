@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e ${DEBUG:+-x}
+exec 3>&1
 
 if [ -n "${POSTGRE_HOST:-}" ] || [ -n "${MYSQL_HOST:-}" ] && [ "${SKIP_DB_MIGRATIONS:-}" != "true" ]; then
   echo >&3 "=> Do database migrations..."
