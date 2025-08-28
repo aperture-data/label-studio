@@ -2,5 +2,5 @@
 set -e ${DEBUG:+-x}
 
 echo >&3 "=> Run label-studio init..."
-label-studio init -q ${LABEL_STUDIO_CREATE_PROJ_TITLE} >&3
+label-studio storage aperturedb "Cloud ApertureDB"
 echo >&3 "=> label-studio init completed."
