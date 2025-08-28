@@ -91,8 +91,8 @@ LOG_CONFIG_YAML = get_env('LOG_CONFIG_YAML','')
 LOG_CONFIG_MERGE = get_bool_env('LOG_CONFIG_MERGE',True)
 
 if LOG_CONFIG_YAML != "":
-    logger.info(f"Config {LOGGING}")
     logger.info(f"=> Reading {LOG_CONFIG_YAML} for logging configuration")
+    logger.debug(f"Starting Config {LOGGING}")
     with open( LOG_CONFIG_YAML, 'rt') as f:
         config = yaml.safe_load( f.read())
         if LOG_CONFIG_MERGE:
@@ -111,7 +111,7 @@ if LOG_CONFIG_YAML != "":
         else:
             logger.info("=> Replacing logging config") 
             logging = config
-    logger.info(f"Config {LOGGING}")
+    logger.debug(f"Config after applying yaml: {LOGGING}")
 
 # Hostname is used for proper path generation to the resources, pages, etc
 HOSTNAME = get_env('HOST', '')
