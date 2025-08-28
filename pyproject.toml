@@ -206,6 +206,7 @@ python-magic = ">=0.4.27"
 mysqlclient = {version = "*", optional = true}
 django-csp = "3.7"
 openai = "^1.10.0"
+humanize = "*"
 
 # Humansignal repo dependencies
 
