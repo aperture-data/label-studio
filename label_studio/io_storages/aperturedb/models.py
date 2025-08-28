@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 import re
+import time
 from traceback import print_exception
 
 from django.conf import settings
@@ -26,21 +27,19 @@ from io_storages.aperturedb.extensions import (
         modify_bbox_add_props,
         extension_iface
 )
+
+
+from io_storages.aperturedb.shared import get_pool_by_key
+from io_storages.aperturedb.connection_pool import ConnectionPool
 from tasks.models import Annotation
 
 from aperturedb import Connector
 import traceback
+import humanize as hz
 
 logger = logging.getLogger(__name__)
 
 UID_REGEX = re.compile(r"^\d+\.\d+\.\d+$")
-DEFAULT_LIMIT = 1000
-# This flag is used to make predictions read-only
-# If set to True, predictions will not be editable in the UI
-# If set to False, predictions will be editable in the UI
-# The latter is a strange situation because predictions are shared 
-# between all client projects.
-PREDICTIONS_READONLY = True
 
 class ApertureDBStorageMixin(models.Model):
     _db_lock = threading.Lock()
@@ -72,31 +71,19 @@ class ApertureDBStorageMixin(models.Model):
             for val in response.values():
                 return self._response_status(val)
 
-    def get_connection(self):
-        if self._db is None:
-            with self._db_lock:
-                if self._db is None:
-                    logger.error(f"Key in get_connection is {self.aperturedb_key}")
-                    self._db = Connector.Connector(
-                        str(self.hostname),
-                        self.port,
-                        user=str(self.username),
-                        password=str(self.password) if self.password else "",
-                        token=str(self.token) if self.token else "",
-                        use_ssl=self.use_ssl,
-                        key=str(self.aperturedb_key) if self.aperturedb_key else None
-                    )
-                    # bug in key connector
-                    self._db.use_keepalive = True
-        return self._db
+    def pool(self):
+        logger.info(f"get_connection: Creating connection; key is {self.aperturedb_key}")
+        if not self.aperturedb_key:
+            raise Exception("Need to implement wrapping non-key data in key")
+        return get_pool_by_key( self.aperturedb_key )
 
     def validate_connection(self, client=None):
         try:
-            db = self.get_connection()
-            res, _ = db.query([{"GetStatus": {}}])
-            if self._response_status(res) != 0:
-                raise ValueError(
-                    f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
+            with self.pool().get_connection() as db:
+                res, _ = db.query([{"GetStatus": {}}])
+                if self._response_status(res) != 0:
+                    raise ValueError(
+                        f"Failed to connect to ApertureDB: {db.get_last_response_str()}")
         except Exception as e:
             print_exception(e)
             logging.error(f"Validate ApertureDB Connection Failed: {e}")
@@ -128,7 +115,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
     )
 
     limit = models.PositiveIntegerField(
-        _("limit"), null=True, blank=True, help_text="Maximum number of tasks", default=DEFAULT_LIMIT)
+        _("limit"), null=True, blank=True, help_text="Maximum number of tasks",
+        default=settings.APERTUREDB_DEFAULT_LIMIT)
 
     as_format_jpg = models.BooleanField(
         _("as_format_jpg"),
@@ -137,7 +125,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
     )
 
     def iterkeys(self):
-        db = self.get_connection()
+        entry = time.time()
 
         batch = 100
 
@@ -155,11 +143,17 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                 json.loads(str(self.constraints)))
 
         while (not self.limit) or (offset < self.limit):
-            find_images["offset"] = offset
-            (
-                res,
-                _,
-            ) = db.query([{"FindImage": find_images}])
+            pre_query = time.time()
+            with self.pool().get_connection() as db:
+                find_images["offset"] = offset
+                (
+                    res,
+                    _,
+                ) = db.query([{"FindImage": find_images}])
+            post_query = time.time()
+            logger.info("ImportStorage time to retrieve image informat at offset {} : {}".
+                        format(offset, hz.precisedelta(post_query-pre_query, minimum_unit="milliseconds")))
+
             if self._response_status(res) != 0:
                 raise ValueError(
                     f"Failed to query images: {db.get_last_response_str()}")
@@ -176,6 +170,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
     def _adb_to_rectanglelabels(img, bboxen):
         width = img["width"]
         height = img["height"]
+        lbl = bbx["_label"]
+        logger.debug(f"Label at conversion point is {lbl}")
         return (
             [
                 {
@@ -196,7 +192,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                                 "height": 100 * bbx["_coordinates"]["height"] / height,
                                 "rectanglelabels": [bbx["_label"]],
                             },
-                            "readonly": PREDICTIONS_READONLY,
+                            "readonly": settings.APERTUREDB_PREDICTIONS_READONLY,
                         }
                         for bbx in bboxen
                     ]
@@ -237,8 +233,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         return next(self._get_bbox_annotations_batch([key], project_id))[1:]
 
     def _get_bbox_annotations_batch(self, keys, project_id):
-        logger.debug(f"Getting annotations for {len(keys)} images")
-        db = self.get_connection()
+        logger.info(f"Getting annotations for {len(keys)} images")
         query = [
             {
                 "FindImage": {
@@ -281,7 +276,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                 }
             )
 
-        res, _ = db.query(query)
+        with self.pool().get_connection() as db:
+            res, _ = db.query(query)
         status = self._response_status(res)
         if status != 0:
             raise ValueError(
@@ -319,7 +315,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         return data
 
     def get_blob(self, uniqueid):
-        db = self.get_connection()
+        entry_time = time.time()
+        conn_time = time.time()
         req = [
             {
                 "FindImage": {
@@ -330,7 +327,11 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         ]
         if self.as_format_jpg:
             req[0]["FindImage"]["as_format"] = "jpg"
-        res, blob = db.query(req)
+        with self.pool().get_connection() as db:
+            res, blob = db.query(req)
+        ret_time = time.time()
+        logger.info("ImportStorage:get_blob time to retrieve image {} : {}".
+                        format(uniqueid, hz.precisedelta(ret_time-entry_time, minimum_unit="milliseconds")))
 
         status = self._response_status(res)
         if status == 0:
@@ -413,8 +414,7 @@ class AnnotationBBox:
 
 class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
     def save_annotation(self, annotation):
-        db = self.get_connection()
-        logger.debug(
+        logger.info(
             f"Creating new object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")
         ser_annotation = self._get_serialized_data(annotation)
 
@@ -456,7 +456,8 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                 }
             }
         ]
-        res, _ = db.query(query)
+        with self.pool().get_connection() as db:
+            res, _ = db.query(query)
         status = self._response_status(res)
         if status != 0:
             raise ValueError(
@@ -470,7 +471,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                 elif bbx["_uniqueid"] in bbox_map:
                     bbox_id_fields[bbx["_uniqueid"]] = "_uniqueid"
 
-        logger.debug(f"{img_id=}, {ann_id=}, {bbox_id_fields=}")
+        logger.info(f"{img_id=}, {ann_id=}, {bbox_id_fields=}")
 
         # TODO: Small race condition here. If a bounding box is added between the initial scan and the save, it will be missed.
 
@@ -571,15 +572,15 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             query.extend(append_to_save_bbox(ctx))
             ref = ctx.ref + 1
 
-        res, _ = db.query(query)
+        with self.pool().get_connection() as db:
+            res, _ = db.query(query)
         status = self._response_status(res)
         if status not in (0, 2):
             raise ValueError(
                 f"Error saving annotation data to ApertureDB : {db.get_last_response_str()}")
 
     def delete_annotation(self, annotation):
-        db = self.get_connection()
-        logger.debug(
+        logger.info(
             f"Deleting object on {self.__class__.__name__} Storage {self} for annotation {annotation}...")
 
         ann_id = str(annotation.id)
@@ -596,7 +597,8 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             {"DeleteEntity": {"ref": 1}},
         ]
 
-        res, _ = db.query(query)
+        with self.pool().get_connection() as db:
+            res, _ = db.query(query)
         status = self._response_status(res)
         if status not in (0, 2):
             raise ValueError(
@@ -607,7 +609,7 @@ def async_aperturedb_annotation_operation(annotation, operation):
     project = annotation.project
     if hasattr(project, "io_storages_aperturedbexportstorages"):
         for storage in project.io_storages_aperturedbexportstorages.all():
-            logger.debug(
+            logger.info(
                 f"{operation} {annotation} in ApertureDB storage {storage}")
             getattr(storage, operation)(annotation)
 

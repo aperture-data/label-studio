@@ -60,7 +60,7 @@ exec_or_wrap_n_exec() {
 
 source_inject_envvars
 
-if ["$0" = "$BASH_SOURCE" ]; then
+if [ "$0" != "$BASH_SOURCE" ]; then
     echo "Sourced"
 else
 

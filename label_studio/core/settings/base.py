@@ -14,12 +14,12 @@ import logging
 import os
 import re
 from datetime import timedelta
+import yaml
 
 from django.core.exceptions import ImproperlyConfigured
 
-from label_studio.core.utils.params import get_bool_env, get_env_list
+from label_studio.core.utils.params import get_bool_env, get_env_list,get_env
 
-logging.getLogger('faker').setLevel(logging.ERROR)
 
 formatter = 'standard'
 JSON_LOG = get_bool_env('JSON_LOG', False)
@@ -76,13 +76,42 @@ LOGGING = {
 
 # for printing messages before main logging config applied
 if not logging.getLogger().hasHandlers():
-    logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+    logging.basicConfig(level=logging.DEBUG if get_bool_env('DEBUG',True) else logging.INFO, format='%(message)s')
+
 
 from label_studio.core.utils.io import get_data_dir
 from label_studio.core.utils.params import get_bool_env, get_env
 
 logger = logging.getLogger(__name__)
 SILENCED_SYSTEM_CHECKS = []
+
+# get config from yaml
+LOG_CONFIG_YAML = get_env('LOG_CONFIG_YAML','')
+# if config should be merged
+LOG_CONFIG_MERGE = get_bool_env('LOG_CONFIG_MERGE',True)
+
+if LOG_CONFIG_YAML != "":
+    logger.info(f"=> Reading {LOG_CONFIG_YAML} for logging configuration")
+    logger.debug(f"Starting Config {LOGGING}")
+    with open( LOG_CONFIG_YAML, 'rt') as f:
+        config = yaml.safe_load( f.read())
+        if LOG_CONFIG_MERGE:
+            logger.info("=> Merging logging config") 
+            yaml_loggers = None
+            if "loggers" in config:
+                yaml_loggers = config["loggers"]
+                del config["loggers"]
+            LOGGING.update(config)
+            if yaml_loggers:
+                for key,yl in yaml_loggers.items():
+                    if key in LOGGING['loggers']:
+                        LOGGING['loggers'][key].update(yl)
+                    else:
+                        LOGGING['loggers'][key] = yl
+        else:
+            logger.info("=> Replacing logging config") 
+            logging = config
+    logger.debug(f"Config after applying yaml: {LOGGING}")
 
 # Hostname is used for proper path generation to the resources, pages, etc
 HOSTNAME = get_env('HOST', '')
