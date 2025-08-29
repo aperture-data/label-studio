@@ -104,7 +104,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
     )
 
     predictions = models.BooleanField(
-        _("predictions"), default=False, help_text="Load bounding box predictions from ApertureDB?"
+        _("predictions"), default=settings.APERTUREDB_DEFAULT_LOAD_PREDICTIONS, help_text="Load bounding box predictions from ApertureDB?"
     )
 
     pred_constraints = models.TextField(
@@ -170,8 +170,8 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
     def _adb_to_rectanglelabels(img, bboxen):
         width = img["width"]
         height = img["height"]
-        lbl = bbx["_label"]
-        logger.debug(f"Label at conversion point is {lbl}")
+        lbls = [bbx["_label"] for bbx in bboxen]
+        logger.debug(f"Label at conversion point is {lbls}")
         return (
             [
                 {
