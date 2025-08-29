@@ -195,6 +195,8 @@ class ApertureDBImportStorageFormLayoutAPI(ImportStorageFormLayoutAPI):
             for f in form_layout['ImportStorage'][1]['fields']:
                 if f['name'] == "limit":
                     f['value'] = settings.APERTUREDB_DEFAULT_LIMIT
+                if f['name'] == "predictions":
+                    f['value'] = settings.APERTUREDB_DEFAULT_LOAD_PREDICTIONS
 
 
         return form_layout

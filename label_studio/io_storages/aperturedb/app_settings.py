@@ -8,3 +8,4 @@ APERTUREDB_DEFAULT_LIMIT = get_env( "APERTUREDB_DEFAULT_LIMIT",1000)
 # The latter is a strange situation because predictions are shared 
 # between all client projects.
 APERTUREDB_PREDICTIONS_READONLY = get_bool_env( "APERTUREDB_RO_PREDS", True )
+APERTUREDB_DEFAULT_LOAD_PREDICTIONS = get_bool_env( "APERTUREDB_DEFAULT_LOAD_PREDS", False )
