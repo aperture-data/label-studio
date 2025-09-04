@@ -517,8 +517,10 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
 
 
         ctx = extension_iface(ref=2,object_ref=2,object_id=str(ann_id))
+        logger.debug(f"ref going into modify_annotation = {ctx.ref}")
         query[1]["AddEntity"]["properties"] = modify_annotation_add_props( query[1]["AddEntity"]["properties"], ctx)
         query.extend( append_to_save_annotation( ctx ))
+        logger.debug(f"ref coming out of modify_annotation = {ctx.ref}")
         
 
         ref = ctx.ref+1
