@@ -7,6 +7,9 @@ import re
 import time
 from traceback import print_exception
 
+from PIL import Image
+from os import BytesIO
+
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save, pre_delete
@@ -137,6 +140,10 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
             "constraints": {"width": [">", 0], "height": [">", 0]}
         }
 
+        # if untagged supported, don't constrain to valid width/height data.
+        if settings.APERTUREDB_UNTAGGED_IMAGES:
+            del find_images["constraints"]
+
         # Concatenate user constraints with our internal width/height requirement
         if self.constraints:
             find_images["constraints"].update(
@@ -148,7 +155,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                 find_images["offset"] = offset
                 (
                     res,
-                    _,
+                    _
                 ) = db.query([{"FindImage": find_images}])
             post_query = time.time()
             logger.info("ImportStorage time to retrieve image informat at offset {} : {}".
@@ -254,6 +261,13 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                 }
             },
         ]
+        # if untagged supported, don't constrain to valid width/height data.
+        if settings.APERTUREDB_UNTAGGED_IMAGES:
+            del query[0]["constraints"]["width"]
+            del query[0]["constraints"]["height"]
+            # if loading constraints, we will need to generate width/height
+            if self.constraints:
+                query[0]["blobs"] = True
 
         if self.predictions:
             pred_constraints = json.loads(
@@ -277,13 +291,13 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
             )
 
         with self.pool().get_connection() as db:
-            res, _ = db.query(query)
+            res, blobs = db.query(query)
         status = self._response_status(res)
         if status != 0:
             raise ValueError(
                 f"Error retrieving ApertureDB image data : {db.get_last_response_str()}")
-        if "entities" in res[0]["FindImage"]:
-            for img in res[0]["FindImage"]["entities"]:
+        if "entities" in iterate(res[0]["FindImage"]:
+            for img_idx, img in enumerate(res[0]["FindImage"]["entities"]):
                 key = img["_uniqueid"]
 
                 anns = res[1]["FindEntity"]["entities"].get(
@@ -292,6 +306,13 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                 anns = [{"result": ann["result"]} for ann in anns]
 
                 if self.predictions:
+
+                    # if untagged supported, don't constrain to valid width/height data.
+                    if settings.APERTUREDB_UNTAGGED_IMAGES:
+                        pil_image = Image.open(BytesIO(blobs[img_idx]))
+
+                        img["width"] = pil_image.height
+                        img["height"] = pil_image.width
                     bboxen = res[2]["FindBoundingBox"]["entities"].get(
                         key, []) if res[2]["FindBoundingBox"]["returned"] > 0 else []
                     preds = self._adb_to_rectanglelabels(img, bboxen)

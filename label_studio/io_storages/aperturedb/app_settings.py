@@ -9,3 +9,7 @@ APERTUREDB_DEFAULT_LIMIT = get_env( "APERTUREDB_DEFAULT_LIMIT",1000)
 # between all client projects.
 APERTUREDB_PREDICTIONS_READONLY = get_bool_env( "APERTUREDB_RO_PREDS", True )
 APERTUREDB_DEFAULT_LOAD_PREDICTIONS = get_bool_env( "APERTUREDB_DEFAULT_LOAD_PREDS", False )
+
+# If true, images are treated as though they have no width/height
+# and it is calculated inside the loader.
+APERTUREDB_UNTAGGED_IMAGES = get_bool_env("APERTUREDB_UNTAGGED_IMAGES",False)
