@@ -296,7 +296,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         if status != 0:
             raise ValueError(
                 f"Error retrieving ApertureDB image data : {db.get_last_response_str()}")
-        if "entities" in iterate(res[0]["FindImage"]:
+        if "entities" in res[0]["FindImage"]:
             for img_idx, img in enumerate(res[0]["FindImage"]["entities"]):
                 key = img["_uniqueid"]
 
