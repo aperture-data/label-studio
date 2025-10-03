@@ -8,7 +8,7 @@ import time
 from traceback import print_exception
 
 from PIL import Image
-from os import BytesIO
+from io import BytesIO
 
 from django.conf import settings
 from django.db import models
@@ -263,11 +263,12 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         ]
         # if untagged supported, don't constrain to valid width/height data.
         if settings.APERTUREDB_UNTAGGED_IMAGES:
-            del query[0]["constraints"]["width"]
-            del query[0]["constraints"]["height"]
+            del query[0]["FindImage"]["constraints"]["width"]
+            del query[0]["FindImage"]["constraints"]["height"]
             # if loading constraints, we will need to generate width/height
-            if self.constraints:
-                query[0]["blobs"] = True
+            if self.predictions:
+                logger.warning("Loading Blobs to Fulfill Constraints")
+                query[0]["FindImage"]["blobs"] = True
 
         if self.predictions:
             pred_constraints = json.loads(
@@ -307,7 +308,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
 
                 if self.predictions:
 
-                    # if untagged supported, don't constrain to valid width/height data.
+                    # if untagged supported, load width/height from the blob.
                     if settings.APERTUREDB_UNTAGGED_IMAGES:
                         pil_image = Image.open(BytesIO(blobs[img_idx]))
 
