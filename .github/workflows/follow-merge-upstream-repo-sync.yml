@@ -186,8 +186,6 @@ jobs:
       - name: Prepare ApertureDB SDK
         if: steps.details.outputs.poetry
         uses: ./.github/actions/aperturedb-sdk
-        with:
-          dockerhub: ${{ secrets.DOCKERHUB }}
 
       - name: "Poetry: Commit and Push"
         if: steps.details.outputs.poetry

@@ -4,19 +4,17 @@ inputs:
   action:
     description: Prepare Poetry or just pull the Docker build input
     default: prepare
-  dockerhub:
-    description: Docker Hub credentials as JSON with username and password fields
 runs:
   using: composite
   steps:
     - uses: oras-project/setup-oras@v1
       with:
         version: '1.3.0'
-    - uses: docker/login-action@v3.3.0
-      if: inputs.dockerhub != ''
-      with:
-        username: ${{ fromJSON(inputs.dockerhub).username }}
-        password: ${{ fromJSON(inputs.dockerhub).password }}
+    - name: Add Poetry to the native Windows path
+      if: runner.os == 'Windows' && (inputs.action == 'prepare' || inputs.action == 'lock')
+      shell: bash
+      # snok/install-poetry writes a Git Bash path. Python launches poetry.exe using the Windows PATH.
+      run: cygpath -aw "${POETRY_HOME:-$HOME/.local}/bin" >> "$GITHUB_PATH"
     - shell: bash
       env:
         SDK_ACTION: ${{ inputs.action }}

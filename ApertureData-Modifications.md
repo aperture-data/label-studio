@@ -5,7 +5,7 @@ This is a document which outlines the modifications and how we use label studio
 ## Building
 The backend requires Python 3.10+ and the SDK wheel from
 `registry-1.docker.io/aperturedata/aperturedb-python:latest`. Install ORAS on the
-host and sign in with `docker login` if the artifact requires authentication.
+host to fetch the public SDK wheel.
 
 For a Docker build, run `python3 scripts/aperturedb_sdk.py pull` before
 `docker build .`. The Makefile and Docker build scripts prepare the wheel

@@ -59,8 +59,6 @@ jobs:
 
       - name: Prepare ApertureDB SDK
         uses: ./.github/actions/aperturedb-sdk
-        with:
-          dockerhub: ${{ secrets.DOCKERHUB }}
 
       - name: Install Python dependencies
         run: poetry install --with test
@@ -148,8 +146,6 @@ jobs:
 
       - name: Prepare ApertureDB SDK
         uses: ./.github/actions/aperturedb-sdk
-        with:
-          dockerhub: ${{ secrets.DOCKERHUB }}
 
       - name: Install Python dependencies
         run: poetry install --with test
@@ -225,8 +221,6 @@ jobs:
 
       - name: Prepare ApertureDB SDK
         uses: ./.github/actions/aperturedb-sdk
-        with:
-          dockerhub: ${{ secrets.DOCKERHUB }}
 
       - name: Install Python dependencies
         run: poetry install --with test

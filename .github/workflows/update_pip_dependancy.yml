@@ -34,8 +34,6 @@ jobs:
 
       - name: Prepare ApertureDB SDK
         uses: ./.github/actions/aperturedb-sdk
-        with:
-          dockerhub: ${{ secrets.DOCKERHUB }}
 
       - name: Commit version files to 'develop'
         id: make-develop-commit
