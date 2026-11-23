@@ -36,13 +36,29 @@ from io_storages.aperturedb.shared import get_pool_by_key
 from io_storages.aperturedb.connection_pool import ConnectionPool
 from tasks.models import Annotation
 
-from aperturedb import Connector
+from aperturedb.Constraints import predicate, to_expression
 import traceback
 import humanize as hz
 
 logger = logging.getLogger(__name__)
 
 UID_REGEX = re.compile(r"^\d+\.\d+\.\d+$")
+
+def combine_constraints(*terms):
+    filters = [term for term in terms if term]
+    if len(filters) > 1:
+        return ["all", *filters]
+    return filters[0] if filters else None
+
+
+def stored_constraints(value):
+    return to_expression(json.loads(value)) if value else None
+
+
+def image_dimensions():
+    if not settings.APERTUREDB_UNTAGGED_IMAGES:
+        return ["all", predicate("width", ">", 0), predicate("height", ">", 0)]
+
 
 class ApertureDBStorageMixin(models.Model):
     _db_lock = threading.Lock()
@@ -133,23 +149,13 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
         batch = 100
 
         offset = 0
-        find_images = {
-            "uniqueids": True,
-            "blobs": False,
-            "limit": batch,
-            "constraints": {"width": [">", 0], "height": [">", 0]}
-        }
+        find_images = {"uniqueids": True, "blobs": False}
+        constraints = combine_constraints(image_dimensions(), stored_constraints(self.constraints))
+        if constraints:
+            find_images["constraints"] = constraints
 
-        # if untagged supported, don't constrain to valid width/height data.
-        if settings.APERTUREDB_UNTAGGED_IMAGES:
-            del find_images["constraints"]
-
-        # Concatenate user constraints with our internal width/height requirement
-        if self.constraints:
-            find_images["constraints"].update(
-                json.loads(str(self.constraints)))
-
-        while (not self.limit) or (offset < self.limit):
+        while not self.limit or offset < self.limit:
+            find_images["limit"] = min(batch, self.limit - offset) if self.limit else batch
             pre_query = time.time()
             with self.pool().get_connection() as db:
                 find_images["offset"] = offset
@@ -186,7 +192,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                         {
                             "from_name": "label",
                             "to_name": "image",
-                            "id": str(bbx["LS_id"] if bbx["LS_id"] is not None else bbx["_uniqueid"]),
+                            "id": str(bbx["LS_id"] if bbx.get("LS_id") is not None else bbx["_uniqueid"]),
                             "type": "rectanglelabels",
                             "original_width": width,
                             "original_height": height,
@@ -248,31 +254,22 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                     "_ref": 1,
                     "results": {"list": ["width", "height"]},
                     "uniqueids": True,
-                    "constraints": {"width": [">", 0], "height": [">", 0], "_uniqueid": ["in", list(keys)]},
+                    "constraints": combine_constraints(image_dimensions(), predicate("_uniqueid", "in", list(keys))),
                 }
             },
             {
                 "FindEntity": {
                     "with_class": "LS_annotation",
                     "is_connected_to": {"ref": 1},
-                    "constraints": {"LS_project_id": ["==", project_id]},
+                    "constraints": predicate("LS_project_id", "==", project_id),
                     "results": {"list": ["LS_data"]},
                     "group_by_source": True,
                 }
             },
         ]
-        # if untagged supported, don't constrain to valid width/height data.
-        if settings.APERTUREDB_UNTAGGED_IMAGES:
-            del query[0]["FindImage"]["constraints"]["width"]
-            del query[0]["FindImage"]["constraints"]["height"]
-            # if loading constraints, we will need to generate width/height
-            if self.predictions:
-                logger.warning("Loading Blobs to Fulfill Constraints")
-                query[0]["FindImage"]["blobs"] = True
-
         if self.predictions:
-            pred_constraints = json.loads(
-                str(self.pred_constraints)) if self.pred_constraints else {}
+            if settings.APERTUREDB_UNTAGGED_IMAGES:
+                query[0]["FindImage"]["blobs"] = True
             query.append(
                 {
                     "FindBoundingBox": {
@@ -282,10 +279,9 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                         "labels": True,
                         "uniqueids": True,
                         "results": {"list": ["LS_id"]},
-                        "constraints": pred_constraints
-                        | {
-                            "LS_id": ["==", None],
-                        },
+                        "constraints": combine_constraints(
+                            stored_constraints(self.pred_constraints), predicate("LS_id", "==", None)
+                        ),
                         "group_by_source": True,
                     }
                 }
@@ -312,8 +308,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
                     if settings.APERTUREDB_UNTAGGED_IMAGES:
                         pil_image = Image.open(BytesIO(blobs[img_idx]))
 
-                        img["width"] = pil_image.height
-                        img["height"] = pil_image.width
+                        img["width"], img["height"] = pil_image.size
                     bboxen = res[2]["FindBoundingBox"]["entities"].get(
                         key, []) if res[2]["FindBoundingBox"]["returned"] > 0 else []
                     preds = self._adb_to_rectanglelabels(img, bboxen)
@@ -343,7 +338,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
             {
                 "FindImage": {
                     "blobs": True,
-                    "constraints": {"_uniqueid": ["==", uniqueid]},
+                    "constraints": predicate("_uniqueid", "==", uniqueid),
                 }
             }
         ]
@@ -357,7 +352,7 @@ class ApertureDBImportStorageBase(ApertureDBStorageMixin, ImportStorage):
 
         status = self._response_status(res)
         if status == 0:
-            return blob[0]
+            return blob[0] if blob else None
         if status == 1:  # empty
             return None
         raise ValueError(
@@ -466,7 +461,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             {
                 "FindImage": {
                     "blobs": False,
-                    "constraints": {"_uniqueid": ["==", img_id]},
+                    "constraints": predicate("_uniqueid", "==", img_id),
                     "_ref": 1,
                 }
             },
@@ -474,7 +469,8 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                 "FindBoundingBox": {
                     "blobs": False,
                     "image_ref": 1,
-                    "results": {"list": ["LS_id", "_uniqueid"]},
+                    "uniqueids": True,
+                    "results": {"list": ["LS_id"]},
                 }
             }
         ]
@@ -488,7 +484,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
         bbox_id_fields = {}
         if "entities" in res[1]["FindBoundingBox"]:
             for bbx in res[1]["FindBoundingBox"]["entities"]:
-                if bbx["LS_id"] in bbox_map:
+                if bbx.get("LS_id") in bbox_map:
                     bbox_id_fields[bbx["LS_id"]] = "LS_id"
                 elif bbx["_uniqueid"] in bbox_map:
                     bbox_id_fields[bbx["_uniqueid"]] = "_uniqueid"
@@ -502,7 +498,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             {
                 "FindImage": {
                     "blobs": False,
-                    "constraints": {"_uniqueid": ["==", img_id]},
+                    "constraints": predicate("_uniqueid", "==", img_id),
                     "results": {"count": True},
                     "_ref": 1,
                 }
@@ -510,7 +506,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
             {
                 "AddEntity": {
                     "class": "LS_annotation",
-                    "if_not_found": {"LS_id": ["==", ann_id]},
+                    "if_not_found": predicate("LS_id", "==", ann_id),
                     "properties": {
                         "LS_id": ann_id,
                     },
@@ -552,7 +548,8 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                 query.extend([
                     { "FindBoundingBox": {
                             "_ref":ref,
-                            "constraints": {id_field: ["==", id_]},
+                            "image_ref": 1,
+                            "constraints": predicate(id_field, "==", id_),
                             }
                     }, {
                         "UpdateBoundingBox": {
@@ -571,6 +568,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                 bbox_query = [
                     {
                         "AddBoundingBox": {
+                            "class": "BoundingBoxes",
                             "image_ref": 1,
                             "_ref": ref,
                             "rectangle": bbox.rect,
@@ -584,7 +582,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
                         }
                     },
                     {"AddConnection": {"class": "LS_annotation_region",
-                                       "src": 2, "dst": ref, "if_not_found": {}}},
+                                       "src": 2, "dst": ref}},
                 ]
                 bbox_query[0]["AddBoundingBox"]["properties"] = \
                     modify_bbox_add_props( bbox_query[0]["AddBoundingBox"]["properties"],ctx)
@@ -610,7 +608,7 @@ class ApertureDBExportStorage(ApertureDBStorageMixin, ExportStorage):
         ann_id = str(annotation.id)
         query = [
             {"FindEntity": {"with_class": "LS_annotation",
-                            "constraints": {"LS_id": ["==", ann_id]}, "_ref": 1}},
+                            "constraints": predicate("LS_id", "==", ann_id), "_ref": 1}},
             {
                 "FindBoundingBox": {
                     "is_connected_to": {"ref": 1, "connection_class": "LS_annotation_region"},

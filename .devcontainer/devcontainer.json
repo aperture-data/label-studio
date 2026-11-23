@@ -5,6 +5,7 @@
 	"name": "Existing Docker Compose (Extend)",
 	// Update the 'dockerComposeFile' list if you have more compose files or use different names.
 	// The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
+	"initializeCommand": ["python3", "${localWorkspaceFolder}/scripts/aperturedb_sdk.py", "pull"],
 	"dockerComposeFile": [
 		"../docker-compose.yml",
 		"docker-compose.yml"

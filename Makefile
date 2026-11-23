@@ -14,10 +14,14 @@ makemigrations-dev:
 shell-dev:
 	DJANGO_DB=sqlite LOG_DIR=tmp DEBUG=true LOG_LEVEL=DEBUG DJANGO_SETTINGS_MODULE=core.settings.label_studio python label_studio/manage.py shell_plus
 
-docker-run-dev:
+.PHONY: sdk-wheel
+sdk-wheel:
+	python3 scripts/aperturedb_sdk.py pull
+
+docker-run-dev: sdk-wheel
 	docker-compose up --build
 
-docker-migrate-dev:
+docker-migrate-dev: sdk-wheel
 	docker-compose run app python3 /label-studio/label_studio/manage.py migrate
 
 
@@ -46,7 +50,7 @@ test:
 	cd label_studio && DJANGO_DB=sqlite pytest -v -m "not integration_tests"
 
 # Build image which includes test dependencies, for unit testing within docker
-build-testing-image:
+build-testing-image: sdk-wheel
 	docker build -t heartexlabs/label-studio:latest . && docker build -t heartexlabs/label-studio:latest-testing -f Dockerfile.testing .
 
 # Run an interactive shell inside a testing container. Label studio dir will be mounted as a volume

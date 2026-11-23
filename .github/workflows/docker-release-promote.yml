@@ -175,8 +175,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3.3.0
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ fromJSON(secrets.DOCKERHUB).username }}
+          password: ${{ fromJSON(secrets.DOCKERHUB).password }}
 
       - name: Login to RedHat Registry
         uses: docker/login-action@v3.3.0

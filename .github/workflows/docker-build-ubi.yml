@@ -166,6 +166,12 @@ jobs:
             core.setOutput("redhat-tags", redHatTags.join(','));
             core.setOutput("ubi-tags", ubiTags.join(','));
 
+      - name: Prepare ApertureDB SDK
+        uses: ./.github/actions/aperturedb-sdk
+        with:
+          action: pull
+          dockerhub: ${{ secrets.DOCKERHUB }}
+
       - name: Build and push ubi
         uses: docker/build-push-action@v6.7.0
         id: docker_build_and_push_ubi

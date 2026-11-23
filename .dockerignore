@@ -22,3 +22,5 @@ label_studio/frontend
 !LICENSE
 !pyproject.toml
 !poetry.lock
+!scripts/aperturedb_sdk.py
+!.aperturedb-sdk/**

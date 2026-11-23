@@ -60,6 +60,7 @@ docker run -it -p 8080:8080 -v $(pwd)/mydata:/label-studio/data heartexlabs/labe
 #### Build a local image with Docker
 If you want to build a local image, run:
 ```bash
+python3 scripts/aperturedb_sdk.py pull
 docker build -t heartexlabs/label-studio:latest .
 ```
 
@@ -72,6 +73,7 @@ Docker Compose script provides production-ready stack consisting of the followin
 
 To start using the app from `http://localhost` run this command:
 ```bash
+python3 scripts/aperturedb_sdk.py pull
 docker-compose up
 ```
 
@@ -80,6 +82,7 @@ You can also run it with an additional MinIO server for local S3 storage. This i
 test the behavior with S3 storage on your local system. To start Label Studio in this way, you need to run the following command:
 ````bash
 # Add sudo on Linux if you are not a member of the docker group
+python3 scripts/aperturedb_sdk.py pull
 docker compose -f docker-compose.yml -f docker-compose.minio.yml up -d
 ````
 If you do not have a static IP address, you must create an entry in your hosts file so that both Label Studio and your 
@@ -88,39 +91,22 @@ browser can access the MinIO server. For more detailed instructions, please refe
 
 ### Install locally with pip
 
-```bash
-# Requires Python >=3.8
-pip install label-studio
-
-# Start the server at http://localhost:8080
-label-studio
-```
-
-### Install locally with poetry
+Use Python 3.10+ and run this command from a checkout of this fork. Pip installs
+the ApertureDB SDK from PyPI as a dependency. To install just the SDK in an
+existing Python environment, run `python -m pip install aperturedb`.
 
 ```bash
-### install poetry
-pip install poetry
-
-### set poetry environment
-poetry new my-label-studio
-cd my-label-studio
-poetry add label-studio
-
-### activate poetry environment
-poetry shell
-
-### Start the server at http://localhost:8080
+python -m pip install .
 label-studio
 ```
 
 ### Install locally with Anaconda
 
 ```bash
-conda create --name label-studio
+conda create --name label-studio python=3.11 psycopg2
 conda activate label-studio
-conda install psycopg2
-pip install label-studio
+python -m pip install .
+label-studio
 ```
 
 ### Install for local development
@@ -128,8 +114,9 @@ pip install label-studio
 You can run the latest Label Studio version locally without installing the package from pypi. 
 
 ```bash
-# Install all package dependencies
-pip install poetry
+# Install Poetry and ensure ORAS is available on PATH
+python -m pip install poetry
+python scripts/aperturedb_sdk.py
 poetry install
 # Run database migrations
 python label_studio/manage.py migrate
@@ -152,25 +139,15 @@ You can deploy Label Studio with one click in Heroku, Microsoft Azure, or Google
 For information about updating the frontend, see [label-studio/web/README.md](https://github.com/HumanSignal/label-studio/blob/develop/web/README.md#usage-instructions).
 
 
-#### Install dependencies on Windows 
-To run Label Studio on Windows, download and install the following wheel packages from [Gohlke builds](https://www.lfd.uci.edu/~gohlke/pythonlibs) to ensure you're using the correct version of Python:
-- [lxml](https://www.lfd.uci.edu/~gohlke/pythonlibs/#lxml)
+#### Install dependencies on Windows
 
-```bash
-# Upgrade pip 
-pip install -U pip
-
-# If you're running Win64 with Python 3.8, install the packages downloaded from Gohlke:
-pip install lxml‑4.5.0‑cp38‑cp38‑win_amd64.whl
-
-# Install label studio
-pip install label-studio
-```
+Use Python 3.10+ and follow the pip instructions above.
 
 ### Run test suite
 To add the tests' dependencies to your local install:
 
 ```bash
+python scripts/aperturedb_sdk.py
 poetry install --with test
 ```
 

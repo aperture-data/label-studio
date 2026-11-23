@@ -1,0 +1,23 @@
+name: Prepare ApertureDB SDK
+description: Pull the infra-promoted SDK wheel for the build or Poetry environment
+inputs:
+  action:
+    description: Prepare Poetry or just pull the Docker build input
+    default: prepare
+  dockerhub:
+    description: Docker Hub credentials as JSON with username and password fields
+runs:
+  using: composite
+  steps:
+    - uses: oras-project/setup-oras@v1
+      with:
+        version: '1.3.0'
+    - uses: docker/login-action@v3.3.0
+      if: inputs.dockerhub != ''
+      with:
+        username: ${{ fromJSON(inputs.dockerhub).username }}
+        password: ${{ fromJSON(inputs.dockerhub).password }}
+    - shell: bash
+      env:
+        SDK_ACTION: ${{ inputs.action }}
+      run: python scripts/aperturedb_sdk.py "$SDK_ACTION"

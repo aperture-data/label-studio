@@ -92,8 +92,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3.3.0
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ fromJSON(secrets.DOCKERHUB).username }}
+          password: ${{ fromJSON(secrets.DOCKERHUB).password }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -127,6 +127,11 @@ jobs:
             cat $LAUNCHDARKLY_DOWNLOAD_PATH
             exit 1
           fi
+
+      - name: Prepare ApertureDB SDK
+        uses: ./.github/actions/aperturedb-sdk
+        with:
+          action: pull
 
       - name: Push Docker image
         uses: docker/build-push-action@v6.7.0

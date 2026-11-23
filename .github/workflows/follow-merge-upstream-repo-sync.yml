@@ -183,6 +183,12 @@ jobs:
         if: steps.details.outputs.poetry
         uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a  # Pinned to release v1
 
+      - name: Prepare ApertureDB SDK
+        if: steps.details.outputs.poetry
+        uses: ./.github/actions/aperturedb-sdk
+        with:
+          dockerhub: ${{ secrets.DOCKERHUB }}
+
       - name: "Poetry: Commit and Push"
         if: steps.details.outputs.poetry
         shell: bash

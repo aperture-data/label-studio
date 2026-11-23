@@ -31,7 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.head_sha }}
 
       - name: Set up Python
         id: setup_python
@@ -46,6 +46,11 @@ jobs:
 
       - name: Set up Poetry
         uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a  # Pinned to release v1
+
+      - name: Prepare ApertureDB SDK
+        uses: ./.github/actions/aperturedb-sdk
+        with:
+          dockerhub: ${{ secrets.DOCKERHUB }}
 
       - name: Install Python dependencies
         run: |
