@@ -1,10 +1,10 @@
 """Prepare the SDK wheel for Poetry or the Docker build context."""
 import argparse
 import hashlib
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / '.aperturedb-sdk'
@@ -38,13 +38,29 @@ def lock():
     digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
     # The named runtime requirement stays portable in published packages.
     # Poetry uses the SDK group's local file to resolve the same dependency.
-    if (f'path = "{relative}"' not in (ROOT / 'pyproject.toml').read_text()
-            or f'sha256:{digest}' not in (ROOT / 'poetry.lock').read_text()):
+    if (
+        f'path = "{relative}"' not in (ROOT / 'pyproject.toml').read_text()
+        or f'sha256:{digest}' not in (ROOT / 'poetry.lock').read_text()
+    ):
         subprocess.run(['poetry', 'add', '--group', 'sdk', '--lock', './' + relative], cwd=ROOT, check=True)
     subprocess.run(['poetry', 'check', '--lock'], cwd=ROOT, check=True)
     # Poetry can reuse a previously installed wheel with the same version and path.
-    subprocess.run(['poetry', 'run', 'python', '-m', 'pip', 'install', '--no-index',
-                    '--no-deps', '--force-reinstall', str(wheel)], cwd=ROOT, check=True)
+    subprocess.run(
+        [
+            'poetry',
+            'run',
+            'python',
+            '-m',
+            'pip',
+            'install',
+            '--no-index',
+            '--no-deps',
+            '--force-reinstall',
+            str(wheel),
+        ],
+        cwd=ROOT,
+        check=True,
+    )
 
 
 if __name__ == '__main__':
